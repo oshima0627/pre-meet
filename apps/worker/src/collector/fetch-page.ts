@@ -57,9 +57,12 @@ export function htmlToText(html: string): string {
     /&(amp|lt|gt|quot|#39|apos|nbsp);/g,
     (m) => ENTITIES[m] ?? m,
   );
-  // 数値文字参照（10進）を簡易デコード
+  // 数値文字参照（10進 &#39; / 16進 &#x27;）をデコード
   text = text.replace(/&#(\d+);/g, (_, code: string) =>
     String.fromCodePoint(Number(code)),
+  );
+  text = text.replace(/&#x([0-9a-f]+);/gi, (_, hex: string) =>
+    String.fromCodePoint(parseInt(hex, 16)),
   );
 
   // 空白の正規化：行内の連続空白を1つに、空行を圧縮

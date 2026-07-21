@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 // AI 出力は必ず zod で検証する（CLAUDE.md）。docs/05 のスキーマに対応。
 // Facts / Hypothesis の型はここを単一情報源とし、z.infer で導出する。
+// ※ LLM が空配列を null で返す件は、パース直前に coerceNullArrays で
+//   スキーマ駆動で補正する（ai/coerce.ts）。スキーマ自体は厳密に保つ。
 
 export const FactsSchema = z.object({
   companyName: z.string(),

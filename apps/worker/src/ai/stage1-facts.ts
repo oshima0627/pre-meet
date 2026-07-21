@@ -10,6 +10,8 @@ export const buildStage1Prompt = (pages: CollectedPage[]): string => `
 # 絶対に守るルール
 - テキストに書かれていない情報を推測で補ってはいけません
 - 不明な項目は必ず null を返してください。空文字や「不明」という文字列は禁止です
+- ただし配列項目（services / locations / recentNews / openPositions / techStack 等）は、
+  該当が無くても null ではなく空配列 [] を返してください
 - あなた自身の意見・分析・提案は一切含めないでください（後工程で行います）
 - 各項目には、その情報が記載されていたURLを source として必ず付けてください
 - 出力はJSONのみ。前置き、後書き、\`\`\` によるコードブロック記法は禁止です

@@ -3,6 +3,7 @@ import type { z } from 'zod';
 import type { ModelUsage } from '@premeet/shared';
 import { AppError } from '../lib/errors.js';
 import { getPricing, type ThinkingMode } from '../lib/env.js';
+import { coerceNullArrays } from './coerce.js';
 
 export interface StructuredResult<T> {
   data: T;
@@ -71,6 +72,8 @@ export async function runStructured<T>(
 
     try {
       const json: unknown = JSON.parse(stripCodeFence(text));
+      // 配列項目の null を [] に補正してから検証（LLM の null 返しで落ちるのを防ぐ）
+      coerceNullArrays(schema, json);
       const data = schema.parse(json);
       return {
         data,

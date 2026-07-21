@@ -43,17 +43,24 @@ export function normalizeUrl(input: string): URL {
   return u;
 }
 
-// パスから収集種別を推定する（キーワードの前方一致）
+// パスから収集種別を推定する（キーワードの前方一致）。
+// 求人逆算・事例は差別化の本体なので取りこぼしを減らす（docs/README, docs/08）。
 function kindForPath(pathname: string): CollectedPage['kind'] | null {
   const p = pathname.toLowerCase();
-  if (/(company|about|corporate|profile|kaisya|gaiyo)/.test(p)) return 'about';
+  // 採用は最優先で拾う（求人からの課題逆算が価値の中核）
+  if (/(recruit|career|careers|job|jobs|saiyo|saiyou|hiring|employ)/.test(p))
+    return 'recruit';
+  // 導入事例・実績（顧客の事実源）
+  if (/(case|cases|jirei|works|customer|clients?|example|showcase|voice)/.test(p))
+    return 'case';
+  if (/(company|about|corporate|profile|kaisya|gaiyo|outline)/.test(p))
+    return 'about';
   if (/(service|product|solution|business)/.test(p)) return 'service';
-  if (/(recruit|career|careers|jobs|saiyo|saiyou)/.test(p)) return 'recruit';
-  if (/(news|press|topics|release|ir)/.test(p)) return 'news';
+  if (/(news|press|topics|release|ir|information)/.test(p)) return 'news';
   return null;
 }
 
-// よく使われる会社概要・採用等のパスを直接プローブする候補
+// よく使われる会社概要・採用・事例等のパスを直接プローブする候補
 const PROBE_PATHS = [
   '/company',
   '/about',
@@ -63,7 +70,15 @@ const PROBE_PATHS = [
   '/services',
   '/products',
   '/recruit',
+  '/recruit/',
   '/careers',
+  '/saiyo',
+  '/case',
+  '/cases',
+  '/works',
+  '/jirei',
+  '/case-study',
+  '/customers',
   '/news',
 ];
 

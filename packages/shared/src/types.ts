@@ -30,8 +30,9 @@ export interface CollectedPage {
   url: string;
   // 本文はトリム済み（原価・時間の防衛線。docs/02: 1ページ8,000文字）
   text: string;
-  // 取得元の種別。ニュースは Web 検索由来なので区別できるようにする
-  kind: 'top' | 'about' | 'service' | 'recruit' | 'news' | 'other';
+  // 取得元の種別。ニュースは Web 検索由来なので区別できるようにする。
+  // case=導入事例（顧客・実績の事実源）
+  kind: 'top' | 'about' | 'service' | 'case' | 'recruit' | 'news' | 'other';
 }
 
 // 自社サービス情報（US-07）。生成時点の値をスナップショットで保持する

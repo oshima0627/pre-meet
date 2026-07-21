@@ -5,14 +5,15 @@ import type { CollectedPage } from '@premeet/shared';
 // いずれも「事実」を落とさずトークンだけ削るための処理。
 
 // 収集種別の優先度（小さいほど残す。総量超過時は大きい方から削る）。
-// 採用・会社概要・サービスは仮説構築に効くので優先的に残す。
+// 採用・事例・会社概要は仮説構築（求人逆算・顧客理解）に効くので優先的に残す。
 const KIND_PRIORITY: Record<CollectedPage['kind'], number> = {
   top: 0,
   about: 1,
-  service: 2,
-  recruit: 3,
-  news: 4,
-  other: 5,
+  recruit: 2, // 求人からの課題逆算＝価値の中核なので優先
+  case: 3, // 導入事例＝顧客の事実源
+  service: 4,
+  news: 5,
+  other: 6,
 };
 
 // 複数ページに共通で現れる行（＝ナビ/フッター等の定型文）を落とす。

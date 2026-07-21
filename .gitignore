@@ -7,5 +7,8 @@ apps/*/.env.local
 
 # 検証結果の出力先（原則コミットしない。共有したい場合のみ個別に追加）
 out/
+
+# 各自の検証対象リスト（テンプレートは companies.example.txt を参照）
+scripts/companies.txt
 *.log
 .DS_Store

@@ -10,6 +10,7 @@
   ],
   "scripts": {
     "verify": "tsx scripts/verify.ts",
+    "verify:batch": "tsx scripts/verify-batch.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

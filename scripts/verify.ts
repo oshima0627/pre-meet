@@ -17,6 +17,7 @@ import {
   toErrorResponse,
   type ResearchInput,
 } from '@premeet/worker';
+import { slugify } from './util.js';
 
 // 1生成あたりの原価上限（docs/01 非機能要件: $0.15、Phase 0 合格基準: $0.10）
 const COST_CAP_USD = 0.15;
@@ -56,10 +57,6 @@ function parseArgs(argv: string[]): CliArgs {
     process.exit(2);
   }
   return { input, inputType, tier, outDir };
-}
-
-function slugify(domain: string): string {
-  return domain.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '') || 'report';
 }
 
 async function main(): Promise<void> {

@@ -45,7 +45,8 @@ interface Outcome {
 function parseListFile(path: string): Entry[] {
   const raw = readFileSync(path, 'utf8');
   const entries: Entry[] = [];
-  for (const line of raw.split('\n')) {
+  // Windows の CRLF でも動くよう改行で分割（\r を残さない）
+  for (const line of raw.split(/\r?\n/)) {
     const stripped = line.replace(/#.*$/, '').trim();
     if (!stripped) continue;
     // "TARGET | ラベル" の形式。| が無ければラベルなし

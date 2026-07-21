@@ -74,7 +74,7 @@ export function loadDotenv(path: string): void {
   // 先頭のBOMを除去（Windowsのメモ帳でUTF-8保存すると付き、
   // 1行目のキー名にBOMが混じって未設定扱いになるのを防ぐ）
   if (raw.charCodeAt(0) === 0xfeff) raw = raw.slice(1);
-  for (const line of raw.split('\n')) {
+  for (const line of raw.split(/\r?\n/)) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) continue;
     const eq = trimmed.indexOf('=');

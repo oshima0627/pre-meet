@@ -20,7 +20,7 @@ export function parseRobots(body: string): RobotsRules {
   let currentAgents: string[] = [];
   let sawRuleForCurrent = false;
 
-  for (const rawLine of body.split('\n')) {
+  for (const rawLine of body.split(/\r?\n/)) {
     // コメントと空白を除去
     const line = rawLine.replace(/#.*$/, '').trim();
     if (!line) continue;

@@ -17,6 +17,10 @@ export interface WorkerConfig {
   stage2Thinking: ThinkingMode;
   searchProvider: string;
   searchApiKey: string | null;
+  // 原価防衛の実効パラメータ（すべて環境変数で調整可能にする）
+  maxPages: number; // 収集ページ数の上限（docs/02 の防衛線）
+  maxPageChars: number; // 1ページあたりの本文トリム
+  maxTotalChars: number; // Stage1 へ渡す本文の総量上限（原価の真の上限）
 }
 
 // モデル別の価格表（$/1M トークン → $/トークン）。
@@ -50,6 +54,13 @@ function optionalEnv(key: string, fallback: string): string {
   return v && v.trim() !== '' ? v.trim() : fallback;
 }
 
+// 正の数値の環境変数を読む。未設定・不正なら fallback
+function optionalNum(key: string, fallback: number): number {
+  const v = process.env[key];
+  const n = v ? Number(v) : NaN;
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
 export function loadConfig(): WorkerConfig {
   const thinking = optionalEnv('MODEL_STAGE2_THINKING', 'disabled');
   return {
@@ -59,6 +70,11 @@ export function loadConfig(): WorkerConfig {
     stage2Thinking: thinking === 'adaptive' ? 'adaptive' : 'disabled',
     searchProvider: optionalEnv('SEARCH_PROVIDER', 'brave'),
     searchApiKey: process.env.SEARCH_API_KEY?.trim() || null,
+    // 実測（Phase 0）で原価が概算の約2倍だったため、既定を控えめに調整。
+    // 総量上限が原価の実効的な天井になる（Stage1=Haiku の入力を約$0.03に抑える狙い）
+    maxPages: optionalNum('MAX_PAGES', 8),
+    maxPageChars: optionalNum('MAX_PAGE_CHARS', 6_000),
+    maxTotalChars: optionalNum('MAX_TOTAL_CHARS', 30_000),
   };
 }
 

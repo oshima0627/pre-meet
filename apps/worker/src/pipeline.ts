@@ -11,6 +11,7 @@ import { FactsSchema, HypothesisSchema, type Facts, type Hypothesis } from './ai
 import { buildStage1Prompt } from './ai/stage1-facts.js';
 import { buildStage2Prompt } from './ai/stage2-hypothesis.js';
 import { collectSite, normalizeUrl } from './collector/discover.js';
+import { prepareForStage1 } from './collector/prepare.js';
 import { webSearch } from './collector/search.js';
 
 // dataQuality がこの値未満なら仮説構築を行わない（docs/05）
@@ -32,6 +33,8 @@ export interface ResearchResult {
   thinContent: boolean;
   sourceUrls: string[];
   pages: Array<Pick<CollectedPage, 'url' | 'kind'>>;
+  // Stage1 へ実際に渡した本文の総文字数（原価チューニングの効果確認用）
+  stage1InputChars: number;
   usage: {
     stage1: ModelUsage;
     stage2: ModelUsage | null;
@@ -73,9 +76,12 @@ export async function runResearch(
       ? await resolveNameToUrl(args.input, config)
       : normalizeUrl(args.input);
 
-  // 2) 収集（Collector）
+  // 2) 収集（Collector）。ページ数・本文長は原価防衛のため config で制御
   onProgress('collecting', 'サイトを取得しています');
-  const collected = await collectSite(start);
+  const collected = await collectSite(start, {
+    maxPages: config.maxPages,
+    maxPageChars: config.maxPageChars,
+  });
   const pages: CollectedPage[] = [...collected.pages];
 
   // ニュースは サイト内 + Web検索API（docs/02）。検索は失敗してもスキップ可
@@ -94,13 +100,16 @@ export async function runResearch(
 
   const client = createAnthropic(config.anthropicApiKey);
 
+  // Stage1 の前に本文を圧縮（定型文除去＋総量上限）。原価の主因＝入力を削る
+  const prepared = prepareForStage1(pages, config.maxTotalChars);
+
   // 3) Stage1：事実抽出（安価モデル・thinking なし）
   onProgress('analyzing', '事実情報を抽出しています');
   const stage1 = await runStructured(
     client,
     {
       model: config.modelStage1,
-      prompt: buildStage1Prompt(pages),
+      prompt: buildStage1Prompt(prepared.pages),
       schema: FactsSchema,
     },
     { thinking: 'disabled', maxTokens: 8_000 },
@@ -139,6 +148,7 @@ export async function runResearch(
     thinContent,
     sourceUrls: collected.sourceUrls,
     pages: pages.map((p) => ({ url: p.url, kind: p.kind })),
+    stage1InputChars: prepared.totalChars,
     usage: { stage1: stage1.usage, stage2: stage2Usage, totalCostUsd },
     durationMs: Date.now() - startedAt,
   };

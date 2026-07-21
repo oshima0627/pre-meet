@@ -106,6 +106,7 @@ async function main(): Promise<void> {
 
   // --- 原価チェック ---
   console.error('\n===== 原価 =====');
+  console.error(`Stage1 入力: ${result.stage1InputChars}文字（総量上限で圧縮後）`);
   console.error(
     `Stage1(${usage.stage1.model}): $${usage.stage1.costUsd.toFixed(5)}  (in=${usage.stage1.inputTokens}, out=${usage.stage1.outputTokens})`,
   );

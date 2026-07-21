@@ -1,7 +1,8 @@
 import { USER_AGENT } from './robots.js';
 
-// 1ページあたりの本文上限（docs/02: 8,000文字でトリム）。原価・時間の防衛線。
-export const MAX_TEXT_CHARS = 8_000;
+// 1ページあたりの本文上限の既定（docs/02: 8,000文字）。
+// 実運用では config.maxPageChars で上書きする（原価チューニングのため）。
+export const DEFAULT_PAGE_CHARS = 8_000;
 
 export interface FetchedPage {
   url: string;
@@ -41,8 +42,8 @@ const ENTITIES: Record<string, string> = {
 };
 
 // HTML から本文テキストを抽出する。script/style を捨て、タグを除去し、
-// 空白を畳んで MAX_TEXT_CHARS でトリムする。
-export function htmlToText(html: string): string {
+// 空白を畳んで maxChars でトリムする。
+export function htmlToText(html: string, maxChars = DEFAULT_PAGE_CHARS): string {
   let text = html
     // 本文にならない要素を丸ごと除去
     .replace(/<(script|style|noscript|template|svg)[\s\S]*?<\/\1>/gi, ' ')
@@ -72,7 +73,7 @@ export function htmlToText(html: string): string {
     .filter((line) => line.length > 0)
     .join('\n');
 
-  return text.slice(0, MAX_TEXT_CHARS);
+  return text.slice(0, maxChars);
 }
 
 // HTML から <title> を1つ取り出す（企業名の当たり・検索クエリ生成に使う）

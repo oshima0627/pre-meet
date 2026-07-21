@@ -5,13 +5,20 @@ import {
   htmlToText,
   extractTitle,
   extractLinks,
+  DEFAULT_PAGE_CHARS,
 } from './fetch-page.js';
 import { parseRobots, isAllowed, type RobotsRules } from './robots.js';
 
-// 取得ページ数の上限（docs/02: 10ページ）。原価・時間の防衛線。コードで強制する。
-export const MAX_PAGES = 10;
+// 取得ページ数の既定上限（docs/02）。実運用では config で上書きする。
+export const DEFAULT_MAX_PAGES = 10;
 // 同一ドメインへのリクエストは1秒に1回まで（docs/02, docs/07）
 const MIN_INTERVAL_MS = 1_000;
+
+// 収集の原価・時間パラメータ（呼び出し側＝config から渡す）
+export interface CollectOptions {
+  maxPages: number;
+  maxPageChars: number;
+}
 
 export interface CollectResult {
   pages: CollectedPage[];
@@ -64,7 +71,10 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // 同一ドメインを 1req/1s で丁寧に巡回する Collector。
 // トップページは必須（取得不可なら中断）。他は取得できたものだけ使う。
-export async function collectSite(start: URL): Promise<CollectResult> {
+export async function collectSite(
+  start: URL,
+  opts: CollectOptions = { maxPages: DEFAULT_MAX_PAGES, maxPageChars: DEFAULT_PAGE_CHARS },
+): Promise<CollectResult> {
   const origin = start.origin;
 
   // robots.txt を先に取得（取得できなければ制限なしとして扱う）
@@ -105,7 +115,7 @@ export async function collectSite(start: URL): Promise<CollectResult> {
     throw new AppError('FETCH_FAILED', start.toString());
   }
   visited.add(start.toString());
-  pages.push({ url: start.toString(), text: htmlToText(topHtml), kind: 'top' });
+  pages.push({ url: start.toString(), text: htmlToText(topHtml, opts.maxPageChars), kind: 'top' });
   const siteTitle = extractTitle(topHtml);
 
   // 2) 収集候補を集める：トップのリンク（種別が判るもの）＋固定プローブ
@@ -133,16 +143,16 @@ export async function collectSite(start: URL): Promise<CollectResult> {
     pushCandidate(new URL(path, origin));
   }
 
-  // 3) 上限まで取得する（トップを含めて MAX_PAGES）
+  // 3) 上限まで取得する（トップを含めて opts.maxPages）
   for (const target of candidates) {
-    if (pages.length >= MAX_PAGES) break;
+    if (pages.length >= opts.maxPages) break;
     if (visited.has(target.toString())) continue;
     if (!isAllowed(robots, target.pathname)) continue; // robots 禁止はスキップ
     visited.add(target.toString());
 
     const html = await fetchPolite(target);
     if (html === null) continue;
-    const text = htmlToText(html);
+    const text = htmlToText(html, opts.maxPageChars);
     if (text.length < 40) continue; // 中身がほぼ無いページは捨てる
     pages.push({
       url: target.toString(),

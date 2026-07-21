@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@premeet/shared": ["../../packages/shared/src/types.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}

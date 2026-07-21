@@ -1,0 +1,14 @@
+{
+  "name": "@premeet/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.112.0",
+    "@premeet/shared": "*",
+    "zod": "^3.24.1"
+  }
+}

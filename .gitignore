@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.local
+apps/*/.env
+apps/*/.env.local
+
+# 検証結果の出力先（原則コミットしない。共有したい場合のみ個別に追加）
+out/
+*.log
+.DS_Store

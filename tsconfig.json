@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // Worker と Web で ResearchReport 型がズレると結果表示が壊れるため、
+    // 型解決はワークスペースの src を直接指す（ビルド前でも型が通る）
+    "paths": {
+      "@premeet/shared": ["./packages/shared/src/types.ts"]
+    },
+    "baseUrl": "."
+  },
+  "include": [
+    "packages/shared/src/**/*.ts",
+    "apps/worker/src/**/*.ts",
+    "scripts/**/*.ts"
+  ]
+}

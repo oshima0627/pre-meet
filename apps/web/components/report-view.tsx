@@ -137,7 +137,7 @@ export function ReportView({ report }: { report: ResearchReport }) {
       )}
 
       {report.sourceUrls.length > 0 && (
-        <p className="text-xs text-slate-400">
+        <p className="break-all text-xs text-slate-400">
           収集元: {report.sourceUrls.slice(0, 8).join(' / ')}
         </p>
       )}

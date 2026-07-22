@@ -28,7 +28,8 @@ export async function SiteHeader() {
       <a href="/" className="text-lg font-bold tracking-tight">
         Pre<span className="text-indigo-600">Meet</span>
       </a>
-      <nav className="flex items-center gap-4 text-sm text-slate-600">
+      {/* スマホは項目が多いと溢れるため、文字・余白を詰める（sm以上で通常サイズ） */}
+      <nav className="flex items-center gap-2.5 text-xs text-slate-600 sm:gap-4 sm:text-sm">
         <a href="/reports" className="hover:text-slate-900">
           リサーチ一覧
         </a>
@@ -37,14 +38,16 @@ export async function SiteHeader() {
         </a>
         {state.loggedIn ? (
           <>
-            {/* 残高はクリックで購入導線（料金ページ）へ。無人運用でも導線を切らさない */}
+            {/* 残高はクリックで購入導線（料金ページ）へ。無人運用でも導線を切らさない。
+                スマホでは「🪙3」まで詰め、sm以上で「クレジット」表記を出す */}
             <a
               href="/pricing"
               title="保有クレジット（クリックで追加購入）"
-              className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-3 py-1 font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-100 hover:bg-indigo-100"
+              className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-indigo-50 px-2 py-1 font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-100 hover:bg-indigo-100 sm:px-3"
             >
               <span aria-hidden>🪙</span>
-              {state.balance} クレジット
+              {state.balance}
+              <span className="hidden sm:inline"> クレジット</span>
             </a>
             <LogoutButton />
           </>

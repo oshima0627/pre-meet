@@ -94,8 +94,9 @@ export function ResearchForm() {
         className="w-full rounded-lg border border-slate-300 px-4 py-3 text-base shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         disabled={loading}
       />
-      <div className="flex items-center gap-4 text-sm">
-        <label className="flex items-center gap-1">
+      {/* スマホでは縦積み（横並びだと長いラベルが窮屈に折り返すため） */}
+      <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:gap-4">
+        <label className="flex items-center gap-1.5">
           <input
             type="radio"
             checked={tier === 'free'}
@@ -104,7 +105,7 @@ export function ResearchForm() {
           />
           無料（事実の要約まで）
         </label>
-        <label className="flex items-center gap-1">
+        <label className="flex items-center gap-1.5">
           <input
             type="radio"
             checked={tier === 'paid'}

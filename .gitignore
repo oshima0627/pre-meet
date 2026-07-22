@@ -17,3 +17,9 @@ scripts/companies.txt
 .next/
 apps/web/.next/
 *.tsbuildinfo
+
+# Cloudflare / OpenNext
+.open-next/
+.wrangler/
+apps/web/.open-next/
+apps/web/.wrangler/

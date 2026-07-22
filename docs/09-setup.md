@@ -68,21 +68,52 @@ cd apps/web && npm run dev   # http://localhost:3000
 3. 料金ページ → テストカード（4242 4242 4242 4242）で購入 → Webhook で残高反映
 4. 完全版（paid）で生成 → クレジット消費
 
-## 7. デプロイ
+## 7. デプロイ（Cloudflare Workers / OpenNext）
 
-このアプリは API route を **Node ランタイム**（`runtime='nodejs'`）で書いている。
+本アプリは `@opennextjs/cloudflare` で **Cloudflare Workers**（`nodejs_compat`）に載せる。
+API route の `runtime='nodejs'` のまま動く（Edge 書き換え不要）。`opennextjs-cloudflare build`
+の成功は確認済み。
 
-- **Vercel（最短）**: そのまま動く。プロジェクトを import し、環境変数を設定するだけ。
-  ただしレート制限の共有KVが必要（後述）。
-- **Cloudflare Pages（docs 指定）**: Edge 化が必要。`@cloudflare/next-on-pages` を導入し、
-  API route を `export const runtime = 'edge'` に変更、`nodejs_compat` フラグ、
-  KV バインディング（`RATE_LIMIT`）を設定する。Queue による非同期生成もここで検討。
+### 手順
 
-### レート制限の共有ストレージ（本番で必須）
+```bash
+cd apps/web
+npx wrangler login                          # Cloudflare 認証
 
-`apps/web/lib/kv.ts` は開発時はプロセス内メモリ（インスタンス間で共有されない）。本番では:
-- Cloudflare: KV バインディングを `getKv(env.RATE_LIMIT)` に渡す
-- Vercel 等: Upstash Redis 等で `KvStore`（get/put）を実装して差し替える
+# レート制限用の共有KVを作成し、出力された id を wrangler.jsonc の
+# kv_namespaces[].id（<REPLACE_WITH_KV_ID>）に貼る
+npx wrangler kv namespace create RATE_LIMIT
+
+# シークレットを登録（本番）。値は docs/09 の各サービスで取得したもの
+npx wrangler secret put ANTHROPIC_API_KEY
+npx wrangler secret put SUPABASE_URL
+npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+npx wrangler secret put NEXT_PUBLIC_SUPABASE_URL
+npx wrangler secret put NEXT_PUBLIC_SUPABASE_ANON_KEY
+npx wrangler secret put STRIPE_SECRET_KEY
+npx wrangler secret put STRIPE_WEBHOOK_SECRET
+npx wrangler secret put NEXT_PUBLIC_APP_URL
+npx wrangler secret put SEARCH_API_KEY       # 任意
+
+npm run cf:deploy                            # build → deploy
+# ローカルで Workers 実行を確認: npm run cf:preview
+```
+
+- `wrangler.jsonc` … Worker 名・`nodejs_compat`・KV バインディング（`RATE_LIMIT`）
+- `open-next.config.ts` … OpenNext 既定構成
+- `lib/cf.ts` … 実行時に `env.RATE_LIMIT` を取り出し `getKv()` へ渡す（本番で共有KVが効く）
+
+### 生成の非同期化（本番前に推奨）
+
+Worker には実行時間の上限がある。最大90秒のインライン生成は超過しうるので、
+docs/02 通り **Queues** で非同期化するのが安全:
+`/api/research` はジョブ投入だけ → 消費 Worker が生成 → クライアントは `/api/status` を
+ポーリング。まず動作確認はインラインでも可。
+
+### 代替: Vercel
+
+Node ランタイムのままそのまま動く（最短）。その場合レート制限KVは Upstash Redis 等で
+`KvStore`（get/put）を実装して `getKv()` に差し替える。
 
 ## 8. リリース前チェック（docs/07）
 

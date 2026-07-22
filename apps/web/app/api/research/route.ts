@@ -8,6 +8,7 @@ import {
 } from '@premeet/worker';
 import { getServerRepo } from '@/lib/repo';
 import { getKv } from '@/lib/kv';
+import { getRateLimitKv } from '@/lib/cf';
 import {
   getIpHash,
   getOrCreateAnonId,
@@ -57,7 +58,9 @@ export async function POST(req: Request) {
 
     const config = loadConfig();
     const repo = getServerRepo();
-    const result = await handleResearchRequest({ repo, kv: getKv(), config }, input);
+    // 本番は Cloudflare KV（共有）、ローカルはメモリにフォールバック
+    const kv = getKv(await getRateLimitKv());
+    const result = await handleResearchRequest({ repo, kv, config }, input);
 
     // KPI 計測（失敗しても本流を止めない。docs/03 events）
     void repo

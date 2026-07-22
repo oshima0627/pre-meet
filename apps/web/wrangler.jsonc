@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "premeet",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-03-25",
+  // Node.js 互換（@anthropic-ai/sdk / supabase-js / stripe を Workers で動かす）
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  // レート制限・サーキットブレーカー用の共有KV。
+  // 事前に `wrangler kv namespace create RATE_LIMIT` して id を貼る。
+  "kv_namespaces": [
+    { "binding": "RATE_LIMIT", "id": "<REPLACE_WITH_KV_ID>" }
+  ]
+  // シークレットは wrangler secret put で設定する（ANTHROPIC_API_KEY,
+  // SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL,
+  // NEXT_PUBLIC_SUPABASE_ANON_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
+  // NEXT_PUBLIC_APP_URL, SEARCH_API_KEY など。docs/09 参照）
+}

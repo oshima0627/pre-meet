@@ -87,6 +87,11 @@ export async function POST(req: Request) {
     return res;
   } catch (err) {
     const status = err instanceof AppError ? err.http : 500;
+    // 想定外エラー（UNKNOWN）は原因が握りつぶされるため、本番ログに実体を残す。
+    // AppError は想定内なので出さない（ログ汚染を避ける）。
+    if (!(err instanceof AppError)) {
+      console.error('[api/research] 想定外エラー:', err);
+    }
     return NextResponse.json(toErrorResponse(err), { status });
   }
 }

@@ -131,6 +131,18 @@ export function createSupabaseRepo(
     },
 
     async createReport(input) {
+      // research_reports.anon_id は anon_visitors への FK。Cookie 由来の匿名IDは
+      // 初回リクエストでまだ未登録なので、レポート作成前に訪問者行を確保する。
+      // （重複時は何もしない＝first_seen_at を上書きしない）
+      if (input.anonId) {
+        const { error: visitorError } = await db
+          .from('anon_visitors')
+          .upsert({ id: input.anonId }, { onConflict: 'id', ignoreDuplicates: true });
+        if (visitorError) {
+          throw new Error(`anon_visitors 確保に失敗: ${visitorError.message}`);
+        }
+      }
+
       const { data, error } = await db
         .from('research_reports')
         .insert({

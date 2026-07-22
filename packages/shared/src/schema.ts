@@ -38,6 +38,8 @@ export const FactsSchema = z.object({
     }),
   ),
   hiring: z.object({
+    // LLM が判断できず null を返すことがある。画面表示には使わない補助フラグなので、
+    // パース直前に coerce 側で null→false に補正し、生成全体を失敗させない（docs/05）。
     isHiring: z.boolean(),
     openPositions: z.array(
       z.object({

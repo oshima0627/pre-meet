@@ -91,8 +91,10 @@ export async function runStructured<T>(
     }
   }
 
-  throw new AppError(
-    'AI_FAILED',
+  // 技術的な原因（zod検証エラー等）はログにだけ残し、ユーザーには定型文言のみ返す
+  console.error(
+    '[AI] 構造化生成に失敗:',
     lastError instanceof Error ? lastError.message : String(lastError),
   );
+  throw new AppError('AI_FAILED');
 }

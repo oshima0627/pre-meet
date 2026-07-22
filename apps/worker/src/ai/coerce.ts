@@ -1,8 +1,10 @@
 import { z } from 'zod';
 
-// LLM は「該当なし」を空配列 [] ではなく null で返すことがある。
-// スキーマ上で「配列を期待する箇所」に限って null/undefined を [] に補正する。
-// 補正対象をハードコードせずスキーマ自体を情報源にするため、配列項目の二重管理を避けられる。
+// LLM は「該当なし／不明」を、期待される型ではなく null で返すことがある。
+// スキーマを情報源に、null/undefined を安全な既定値へ補正する:
+//   - 配列を期待する位置 → []（空配列）
+//   - 真偽値を期待する位置 → false（不明は「該当なし」に倒す）
+// 補正対象をハードコードせずスキーマ駆動にするため、項目の二重管理を避けられる。
 // （as any は使わず、zod の内部 def へは最小限の型付きアクセスのみ行う）
 
 // Optional / Nullable / Default / Effects を剥がして基底の型に到達する
@@ -33,6 +35,9 @@ export function coerceNullArrays(schema: z.ZodTypeAny, value: unknown): unknown 
       const childBase = unwrap(child);
       if (childBase instanceof z.ZodArray) {
         if (obj[key] === null || obj[key] === undefined) obj[key] = [];
+      } else if (childBase instanceof z.ZodBoolean) {
+        // 非nullableな真偽値に null が来たら false に倒す（isHiring 等）
+        if (obj[key] === null || obj[key] === undefined) obj[key] = false;
       } else if (childBase instanceof z.ZodObject) {
         coerceNullArrays(child, obj[key]); // ネストしたオブジェクトを辿る
       }

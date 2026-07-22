@@ -13,7 +13,13 @@
   // 事前に `wrangler kv namespace create RATE_LIMIT` して id を貼る。
   "kv_namespaces": [
     { "binding": "RATE_LIMIT", "id": "e2a51a5a12f24a43a9a58e6fef06aab5" }
-  ]
+  ],
+  // 本番でエラー原因を追えるようにログを常時有効化する。
+  // （ダッシュボードで手動ONしてもデプロイのたびに戻るため、設定ファイルで固定）
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
   // シークレットは wrangler secret put で設定する（ANTHROPIC_API_KEY,
   // SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL,
   // NEXT_PUBLIC_SUPABASE_ANON_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,

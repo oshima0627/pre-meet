@@ -19,9 +19,18 @@
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1
+  },
+  // 公開して問題ない値（URL・匿名キー）はここに固定する。
+  // 理由: wrangler deploy はダッシュボードで手動設定した Plaintext 変数を
+  // 毎回リセットするため、設定ファイルに書かないとデプロイのたびに消える。
+  // これらはもともとブラウザに露出する値なので秘匿性はない（RLSで保護）。
+  "vars": {
+    "SUPABASE_URL": "https://uwnephsbglwrsdlahgpo.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_URL": "https://uwnephsbglwrsdlahgpo.supabase.co",
+    "NEXT_PUBLIC_APP_URL": "https://premeet.oshima6-27.workers.dev"
   }
-  // シークレットは wrangler secret put で設定する（ANTHROPIC_API_KEY,
-  // SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL,
-  // NEXT_PUBLIC_SUPABASE_ANON_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
-  // NEXT_PUBLIC_APP_URL, SEARCH_API_KEY など。docs/09 参照）
+  // 秘密（暗号化が必要な値）は Secret として登録する。Secret はデプロイで消えない。
+  //   ANTHROPIC_API_KEY / SUPABASE_SERVICE_ROLE_KEY / STRIPE_SECRET_KEY /
+  //   STRIPE_WEBHOOK_SECRET / SEARCH_API_KEY / NEXT_PUBLIC_SUPABASE_ANON_KEY
+  // ※ 匿名キーは公開値だが、リポジトリに置きたくないため Secret 側で保持する。
 }

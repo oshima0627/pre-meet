@@ -31,6 +31,8 @@ export interface ResearchResult {
   hypothesis: Hypothesis | null;
   // 情報不足で仮説構築を中止したか（true のとき本番ではクレジットを返す）
   thinContent: boolean;
+  // 会社キャッシュ（7日以内の facts）を再利用したか（原価ゼロ）
+  cacheHit: boolean;
   sourceUrls: string[];
   pages: Array<Pick<CollectedPage, 'url' | 'kind'>>;
   // Stage1 へ実際に渡した本文の総文字数（原価チューニングの効果確認用）
@@ -62,11 +64,20 @@ async function resolveNameToUrl(
   return normalizeUrl(first.url);
 }
 
+// 7日以内キャッシュ（Stage1 の facts）を注入するための入力。
+// これがあると収集＋Stage1 をスキップして原価を大きく削る（docs/02）。
+export interface CachedFacts {
+  facts: Facts;
+  sourceUrls: string[];
+}
+
 // 収集 → Stage1 → Stage2 の一連の処理。事実と推測を段階で分離する（docs/02）。
+// cached が渡された場合は収集＋Stage1 を省略し、キャッシュされた facts を使う。
 export async function runResearch(
   args: ResearchInput,
   config: WorkerConfig,
   onProgress: OnProgress = () => {},
+  cached?: CachedFacts,
 ): Promise<ResearchResult> {
   const startedAt = Date.now();
 
@@ -76,45 +87,67 @@ export async function runResearch(
       ? await resolveNameToUrl(args.input, config)
       : normalizeUrl(args.input);
 
-  // 2) 収集（Collector）。ページ数・本文長は原価防衛のため config で制御
-  onProgress('collecting', 'サイトを取得しています');
-  const collected = await collectSite(start, {
-    maxPages: config.maxPages,
-    maxPageChars: config.maxPageChars,
-  });
-  const pages: CollectedPage[] = [...collected.pages];
-
-  // ニュースは サイト内 + Web検索API（docs/02）。検索は失敗してもスキップ可
-  const newsQuery = `${collected.siteTitle ?? start.host} ニュース プレスリリース`;
-  onProgress('collecting', '関連ニュースを確認しています');
-  const news = await webSearch(newsQuery, config, 5);
-  for (const n of news) {
-    pages.push({ url: n.url, text: `${n.title}\n${n.snippet}`, kind: 'news' });
-  }
-
-  // 収集情報が極端に少なければ生成しない（docs/02: クレジット消費なし）
-  const totalChars = pages.reduce((sum, p) => sum + p.text.length, 0);
-  if (pages.length <= 1 && totalChars < 300) {
-    throw new AppError('THIN_CONTENT', '収集できた情報が極端に少ないです');
-  }
-
   const client = createAnthropic(config.anthropicApiKey);
 
-  // Stage1 の前に本文を圧縮（定型文除去＋総量上限）。原価の主因＝入力を削る
-  const prepared = prepareForStage1(pages, config.maxTotalChars);
+  // 事実（Stage1 相当）を用意する。キャッシュがあれば収集＋Stage1 を省略する。
+  let facts: Facts;
+  let sourceUrls: string[];
+  let stage1Usage: ModelUsage;
+  let stage1InputChars: number;
+  let resultPages: Array<{ url: string; kind: CollectedPage['kind'] }>;
+  const cacheHit = cached != null;
 
-  // 3) Stage1：事実抽出（安価モデル・thinking なし）
-  onProgress('analyzing', '事実情報を抽出しています');
-  const stage1 = await runStructured(
-    client,
-    {
-      model: config.modelStage1,
-      prompt: buildStage1Prompt(prepared.pages),
-      schema: FactsSchema,
-    },
-    { thinking: 'disabled', maxTokens: 8_000 },
-  );
-  const facts = stage1.data;
+  if (cached) {
+    onProgress('analyzing', 'キャッシュから事実情報を再利用しています');
+    facts = cached.facts;
+    sourceUrls = cached.sourceUrls;
+    // キャッシュ利用時は新たな入力トークンが無いので原価ゼロ
+    stage1Usage = { model: 'cache', inputTokens: 0, outputTokens: 0, costUsd: 0 };
+    stage1InputChars = 0;
+    resultPages = sourceUrls.map((url) => ({ url, kind: 'other' as const }));
+  } else {
+    // 2) 収集（Collector）。ページ数・本文長は原価防衛のため config で制御
+    onProgress('collecting', 'サイトを取得しています');
+    const collected = await collectSite(start, {
+      maxPages: config.maxPages,
+      maxPageChars: config.maxPageChars,
+    });
+    const pages: CollectedPage[] = [...collected.pages];
+
+    // ニュースは サイト内 + Web検索API（docs/02）。検索は失敗してもスキップ可
+    const newsQuery = `${collected.siteTitle ?? start.host} ニュース プレスリリース`;
+    onProgress('collecting', '関連ニュースを確認しています');
+    const news = await webSearch(newsQuery, config, 5);
+    for (const n of news) {
+      pages.push({ url: n.url, text: `${n.title}\n${n.snippet}`, kind: 'news' });
+    }
+
+    // 収集情報が極端に少なければ生成しない（docs/02: クレジット消費なし）
+    const totalChars = pages.reduce((sum, p) => sum + p.text.length, 0);
+    if (pages.length <= 1 && totalChars < 300) {
+      throw new AppError('THIN_CONTENT', '収集できた情報が極端に少ないです');
+    }
+
+    // Stage1 の前に本文を圧縮（定型文除去＋総量上限）。原価の主因＝入力を削る
+    const prepared = prepareForStage1(pages, config.maxTotalChars);
+
+    // 3) Stage1：事実抽出（安価モデル・thinking なし）
+    onProgress('analyzing', '事実情報を抽出しています');
+    const stage1 = await runStructured(
+      client,
+      {
+        model: config.modelStage1,
+        prompt: buildStage1Prompt(prepared.pages),
+        schema: FactsSchema,
+      },
+      { thinking: 'disabled', maxTokens: 8_000 },
+    );
+    facts = stage1.data;
+    sourceUrls = collected.sourceUrls;
+    stage1Usage = stage1.usage;
+    stage1InputChars = prepared.totalChars;
+    resultPages = pages.map((p) => ({ url: p.url, kind: p.kind }));
+  }
 
   // dataQuality が低ければ仮説は作らない（無理に作ると的外れになる）
   const thinContent = facts.dataQuality.score < THIN_CONTENT_SCORE;
@@ -139,17 +172,18 @@ export async function runResearch(
 
   onProgress('done', '完了しました');
 
-  const totalCostUsd = stage1.usage.costUsd + (stage2Usage?.costUsd ?? 0);
+  const totalCostUsd = stage1Usage.costUsd + (stage2Usage?.costUsd ?? 0);
   return {
     domain: start.host,
     tier: args.tier,
     facts,
     hypothesis,
     thinContent,
-    sourceUrls: collected.sourceUrls,
-    pages: pages.map((p) => ({ url: p.url, kind: p.kind })),
-    stage1InputChars: prepared.totalChars,
-    usage: { stage1: stage1.usage, stage2: stage2Usage, totalCostUsd },
+    cacheHit,
+    sourceUrls,
+    pages: resultPages,
+    stage1InputChars,
+    usage: { stage1: stage1Usage, stage2: stage2Usage, totalCostUsd },
     durationMs: Date.now() - startedAt,
   };
 }

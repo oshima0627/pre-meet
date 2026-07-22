@@ -21,6 +21,10 @@ export interface WorkerConfig {
   maxPages: number; // 収集ページ数の上限（docs/02 の防衛線）
   maxPageChars: number; // 1ページあたりの本文トリム
   maxTotalChars: number; // Stage1 へ渡す本文の総量上限（原価の真の上限）
+  // Supabase（Worker はサービスロールで書き込む。Phase 0 の検証CLIでは未設定でよい）
+  supabaseUrl: string | null;
+  supabaseServiceRoleKey: string | null;
+  cacheTtlDays: number; // 会社キャッシュの有効日数（docs/02: 7日）
 }
 
 // モデル別の価格表（$/1M トークン → $/トークン）。
@@ -75,6 +79,9 @@ export function loadConfig(): WorkerConfig {
     maxPages: optionalNum('MAX_PAGES', 8),
     maxPageChars: optionalNum('MAX_PAGE_CHARS', 6_000),
     maxTotalChars: optionalNum('MAX_TOTAL_CHARS', 30_000),
+    supabaseUrl: process.env.SUPABASE_URL?.trim() || null,
+    supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || null,
+    cacheTtlDays: optionalNum('CACHE_TTL_DAYS', 7),
   };
 }
 

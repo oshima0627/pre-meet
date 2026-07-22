@@ -192,15 +192,25 @@ export function createSupabaseRepo(
         .eq('id', reportId);
     },
 
-    async getReportBySlug(slug) {
+    async getReportBySlug(slug, viewer) {
       const { data, error } = await db
         .from('research_reports')
         .select(
-          'slug, tier, status, error_code, facts, hypothesis, own_context, is_public, created_at, completed_at, companies(name, domain, source_urls)',
+          'slug, tier, status, error_code, facts, hypothesis, own_context, is_public, user_id, anon_id, created_at, completed_at, companies(name, domain, source_urls)',
         )
         .eq('slug', slug)
         .maybeSingle();
       if (error || !data) return null;
+
+      // アクセス制御：この取得はサービスロール（RLSバイパス）なので、ここで
+      // 明示的に「公開 or 所有者本人」だけに絞る。これが無いとスラッグを知る
+      // /当てた第三者に有料仮説・own_context（依頼主の営業情報）まで漏れる。
+      const isPublic = data.is_public === true;
+      const ownedByUser =
+        viewer?.userId != null && viewer.userId === data.user_id;
+      const ownedByAnon =
+        viewer?.anonId != null && viewer.anonId === data.anon_id;
+      if (!isPublic && !ownedByUser && !ownedByAnon) return null;
 
       const facts = data.facts ? FactsSchema.safeParse(data.facts) : null;
       const hyp = data.hypothesis

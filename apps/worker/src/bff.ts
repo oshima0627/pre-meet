@@ -35,9 +35,17 @@ export interface ResearchResponse {
   report: ResearchReport;
 }
 
-// 共有リンク用の短いスラッグ（docs/02: 例 a7fk2x）
+// 共有リンク用のスラッグ。推測・総当たりで他人のレポートを引けないよう、
+// Math.random ではなく暗号乱数から十分な長さ（22文字≒131bit）で作る。
+// （非公開判定は getReportBySlug 側でも行うが、識別子自体も予測不能にする）
+const SLUG_ALPHABET =
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 function makeSlug(): string {
-  return Math.random().toString(36).slice(2, 8);
+  const bytes = new Uint8Array(22);
+  crypto.getRandomValues(bytes);
+  let out = '';
+  for (const b of bytes) out += SLUG_ALPHABET[b % SLUG_ALPHABET.length];
+  return out;
 }
 
 // docs/04 の処理順を厳守する:

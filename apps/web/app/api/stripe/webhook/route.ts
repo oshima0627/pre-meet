@@ -38,56 +38,35 @@ export async function POST(req: Request) {
       const paymentIntentId =
         typeof s.payment_intent === 'string' ? s.payment_intent : null;
       if (userId && credits > 0) {
-        // 決済履歴を paid に
-        await db.from('payments').upsert(
-          {
-            user_id: userId,
-            stripe_session_id: s.id,
-            stripe_payment_intent_id: paymentIntentId,
-            amount_jpy: s.amount_total ?? 0,
-            credits,
-            status: 'paid',
-          },
-          { onConflict: 'stripe_session_id' },
-        );
-        // クレジット付与。stripe_payment_intent_id のユニーク制約で二重付与を防ぐ（docs/04）
-        await db.from('credit_ledger').insert({
-          user_id: userId,
-          amount: credits,
-          reason: 'purchase',
-          stripe_payment_intent_id: paymentIntentId,
-          expires_at: creditExpiryIso(),
+        // 付与は原子的・冪等な RPC に委ねる（payments/credit_ledger を1トランザクション）。
+        // 二重付与防止は payments.stripe_session_id の一意性で担保する（0005）。
+        const { error } = await db.rpc('grant_purchase_credits', {
+          p_user_id: userId,
+          p_session_id: s.id,
+          p_payment_intent_id: paymentIntentId,
+          p_amount_jpy: s.amount_total ?? 0,
+          p_credits: credits,
+          p_expires_at: creditExpiryIso(),
         });
+        if (error) throw new Error(error.message);
       }
     } else if (event.type === 'charge.refunded') {
       const charge = event.data.object;
       const paymentIntentId =
         typeof charge.payment_intent === 'string' ? charge.payment_intent : null;
-      // 付与時のレコードから user_id / credits を引く
       if (paymentIntentId) {
-        const { data: pay } = await db
-          .from('payments')
-          .select('user_id, credits')
-          .eq('stripe_payment_intent_id', paymentIntentId)
-          .maybeSingle();
-        if (pay?.user_id) {
-          // 返金＝クレジットをマイナス計上（残高が負になることは許容。docs/04）
-          await db.from('credit_ledger').insert({
-            user_id: pay.user_id,
-            amount: -Number(pay.credits ?? 0),
-            reason: 'refund',
-          });
-          await db
-            .from('payments')
-            .update({ status: 'refunded' })
-            .eq('stripe_payment_intent_id', paymentIntentId);
-        }
+        // 返金も原子的・冪等な RPC で反映（再送しても二重減算しない。0005）
+        const { error } = await db.rpc('apply_purchase_refund', {
+          p_payment_intent_id: paymentIntentId,
+        });
+        if (error) throw new Error(error.message);
       }
     }
     return NextResponse.json({ received: true });
   } catch (err) {
-    // DB 書き込み失敗は 500 で返し Stripe に再送させる（冪等なので安全）
-    const message = err instanceof Error ? err.message : 'db error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    // DB 書き込み失敗は 500 で返し Stripe に再送させる（RPC が冪等なので安全）。
+    // 生のエラー文言は外へ出さず運用ログにのみ残す（情報漏洩を避ける）。
+    console.error('[stripe/webhook] 処理失敗:', err);
+    return NextResponse.json({ error: 'internal error' }, { status: 500 });
   }
 }

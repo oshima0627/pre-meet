@@ -35,6 +35,13 @@ export interface CreateReportInput {
   ownContext: OwnContext | null;
 }
 
+// レポート閲覧者の識別情報。スラッグを知っているだけでは非公開レポートを
+// 見せない（所有者 or 公開のみ）ための判定に使う。docs/06,07。
+export interface ReportViewer {
+  userId: string | null;
+  anonId: string | null;
+}
+
 // 永続化の依存を抽象化する（Supabase 実装と、テスト用フェイクを差し替え可能にする）。
 // これにより BFF の処理順（キャッシュ→課金→生成→永続化→返還）をオフライン検証できる。
 export interface ReportRepo {
@@ -63,7 +70,12 @@ export interface ReportRepo {
   completeReport(reportId: string, result: ResearchResult): Promise<void>;
   failReport(reportId: string, errorCode: ErrorCode): Promise<void>;
   // 結果ページ・共有リンク・進捗取得用。存在しなければ null。
-  getReportBySlug(slug: string): Promise<ResearchReport | null>;
+  // viewer を渡すと「公開レポート or 所有者本人」以外には null を返す（スラッグ
+  // 総当たりでの他人レポート閲覧を防ぐ）。viewer 省略時は公開レポートのみ返す。
+  getReportBySlug(
+    slug: string,
+    viewer?: ReportViewer,
+  ): Promise<ResearchReport | null>;
   // 自分の過去レポート一覧（ログインは user_id、匿名は anon_id で絞る）。
   // 新しい順。本文は含めず一覧表示に必要な項目だけ返す。
   listReports(input: {

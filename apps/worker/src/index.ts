@@ -17,3 +17,13 @@ export type { Facts, Hypothesis } from './ai/schema.js';
 export { isCacheFresh } from './db/repo.js';
 export type { ReportRepo, CachedCompany } from './db/repo.js';
 export { createSupabaseRepo } from './db/supabase-repo.js';
+// レート制限・サーキットブレーカー（Phase 1・原価防衛）
+export {
+  guardGeneration,
+  checkFreeRateLimit,
+  checkCircuitBreaker,
+  FREE_ANON_DAILY_LIMIT,
+  FREE_USER_DAILY_LIMIT,
+  IP_DAILY_LIMIT,
+} from './guard.js';
+export type { KvStore, GuardResult, GuardInput } from './guard.js';

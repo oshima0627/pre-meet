@@ -25,6 +25,8 @@ export interface WorkerConfig {
   supabaseUrl: string | null;
   supabaseServiceRoleKey: string | null;
   cacheTtlDays: number; // 会社キャッシュの有効日数（docs/02: 7日）
+  // サーキットブレーカー：全ユーザー合計の1日生成上限（docs/06）。原価暴走の最後の砦
+  dailyGlobalLimit: number;
 }
 
 // モデル別の価格表（$/1M トークン → $/トークン）。
@@ -82,6 +84,7 @@ export function loadConfig(): WorkerConfig {
     supabaseUrl: process.env.SUPABASE_URL?.trim() || null,
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || null,
     cacheTtlDays: optionalNum('CACHE_TTL_DAYS', 7),
+    dailyGlobalLimit: optionalNum('DAILY_GLOBAL_LIMIT', 500),
   };
 }
 

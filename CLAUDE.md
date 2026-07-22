@@ -63,7 +63,17 @@ scripts/       検証用CLI
 
 ## 現在のフェーズ
 
-**Phase 0（精度検証）**
+**Phase 1（MVP）実装中** — Phase 0（精度検証）の CLI とパイプラインは実装済み。
 
-`scripts/verify.ts` の実装と、10社での検証が最優先。
-UI・決済・認証には着手しない。詳細は docs/08-roadmap.md を参照。
+実装済み:
+- Phase 0: `scripts/verify.ts` / `verify-batch.ts`（収集→Stage1→Stage2→採点シート）
+- Worker: 収集・2段階生成・7日キャッシュ・レート制限/サーキットブレーカー・
+  BFF ハンドラ（`handleResearchRequest`）
+- DB: `supabase/migrations`（スキーマ・RLS・クレジット台帳RPC）
+- Web: Next.js 15（LP/結果/料金/法務、`/api/research` `/api/checkout`
+  `/api/stripe/webhook`、認証・匿名マージ・計測）
+
+未了（deploy/実サービス接続が前提）:
+- Cloudflare Pages/Workers への実デプロイ、Queue による非同期生成、
+  実キーでのE2E動作確認、10社での精度採点（Phase 0 合格判定）
+- Phase 2 送り: PDF出力 / 共有リンクOGP / 自社情報保存 / 業種別テンプレ（docs/08）

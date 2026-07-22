@@ -89,17 +89,9 @@ export async function POST(req: Request) {
     const status = err instanceof AppError ? err.http : 500;
     // 想定外エラー（UNKNOWN）は原因が握りつぶされるため、本番ログに実体を残す。
     // AppError は想定内なので出さない（ログ汚染を避ける）。
+    // 想定外エラーは運用ログに実体を残す（ユーザーには定型文言のみ返す）。
     if (!(err instanceof AppError)) {
       console.error('[api/research] 想定外エラー:', err);
-      // 【一時デバッグ】原因特定のため実体をレスポンスにも出す。特定後に削除する。
-      const debug =
-        err instanceof Error
-          ? `${err.name}: ${err.message}\n${err.stack ?? ''}`
-          : String(err);
-      return NextResponse.json(
-        { error: { code: 'UNKNOWN', message: '想定外のエラーが発生しました', debug } },
-        { status },
-      );
     }
     return NextResponse.json(toErrorResponse(err), { status });
   }

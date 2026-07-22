@@ -27,3 +27,10 @@ export {
   IP_DAILY_LIMIT,
 } from './guard.js';
 export type { KvStore, GuardResult, GuardInput } from './guard.js';
+// BFF リクエストハンドラ（docs/04 の /api/research 処理順）
+export { handleResearchRequest } from './bff.js';
+export type {
+  HandleResearchInput,
+  HandleResearchDeps,
+  ResearchResponse,
+} from './bff.js';

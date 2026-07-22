@@ -49,7 +49,7 @@ type ProgressStep = 'collecting' | 'analyzing' | 'generating' | 'done';
 export type OnProgress = (step: ProgressStep, message: string) => void;
 
 // 企業名入力を公式サイトURLに解決する（第1候補を採用。docs/02 Step1）
-async function resolveNameToUrl(
+export async function resolveNameToUrl(
   name: string,
   config: WorkerConfig,
 ): Promise<URL> {

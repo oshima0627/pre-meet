@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { FactsSchema } from '@premeet/shared';
+import { FactsSchema, HypothesisSchema, type ResearchReport } from '@premeet/shared';
 import { isCacheFresh, type CachedCompany, type ReportRepo } from './repo.js';
 
 // Supabase を使った ReportRepo 実装。書き込みはサービスロール（RLSバイパス）で行う。
@@ -54,6 +54,150 @@ export function createSupabaseRepo(
         // キャッシュ保存失敗は致命ではない（次回また生成すればよい）。呼び出し側で握る
         throw new Error(`companies upsert 失敗: ${error.message}`);
       }
+    },
+
+    async ensureCompany(domain, name) {
+      // 既存を探し、無ければ作成して company_id を返す
+      const found = await db
+        .from('companies')
+        .select('id')
+        .eq('domain', domain)
+        .maybeSingle();
+      if (found.data?.id) return found.data.id as string;
+
+      const inserted = await db
+        .from('companies')
+        .insert({ domain, name })
+        .select('id')
+        .single();
+      if (inserted.error || !inserted.data) {
+        // 競合で同時挿入された場合を考慮して再取得
+        const retry = await db
+          .from('companies')
+          .select('id')
+          .eq('domain', domain)
+          .maybeSingle();
+        if (retry.data?.id) return retry.data.id as string;
+        throw new Error(`companies 確保に失敗: ${inserted.error?.message}`);
+      }
+      return inserted.data.id as string;
+    },
+
+    async getRecentDoneReport(domain, tier, ttlDays) {
+      // ドメイン→company_id→直近doneレポート。自社情報つきは呼び出し側で除外済み。
+      const company = await db
+        .from('companies')
+        .select('id, name')
+        .eq('domain', domain)
+        .maybeSingle();
+      if (!company.data?.id) return null;
+
+      const { data, error } = await db
+        .from('research_reports')
+        .select(
+          'slug, tier, status, facts, hypothesis, own_context, is_public, created_at, completed_at',
+        )
+        .eq('company_id', company.data.id)
+        .eq('tier', tier)
+        .eq('status', 'done')
+        .is('own_context', null) // 自社情報つきはキャッシュ対象外
+        .order('completed_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error || !data) return null;
+      if (!isCacheFresh(data.completed_at, ttlDays, Date.now())) return null;
+
+      // jsonb は必ず検証してから型にのせる
+      const facts = FactsSchema.safeParse(data.facts);
+      const hyp = data.hypothesis
+        ? HypothesisSchema.safeParse(data.hypothesis)
+        : null;
+
+      const report: ResearchReport = {
+        slug: data.slug,
+        tier: data.tier,
+        status: 'done',
+        errorCode: null,
+        company: { name: company.data.name ?? null, domain },
+        facts: facts.success ? facts.data : null,
+        hypothesis: hyp && hyp.success ? hyp.data : null,
+        ownContext: null,
+        sourceUrls: [],
+        isPublic: data.is_public ?? false,
+        createdAt: data.created_at,
+        completedAt: data.completed_at,
+      };
+      return report;
+    },
+
+    async createReport(input) {
+      const { data, error } = await db
+        .from('research_reports')
+        .insert({
+          slug: input.slug,
+          company_id: input.companyId,
+          tier: input.tier,
+          user_id: input.userId,
+          anon_id: input.anonId,
+          own_context: input.ownContext,
+          status: 'queued',
+        })
+        .select('id')
+        .single();
+      if (error || !data) {
+        throw new Error(`research_reports 作成に失敗: ${error?.message}`);
+      }
+      return data.id as string;
+    },
+
+    async completeReport(reportId, result) {
+      const { error } = await db
+        .from('research_reports')
+        .update({
+          status: 'done',
+          facts: result.facts,
+          hypothesis: result.hypothesis,
+          model_stage1: result.usage.stage1.model,
+          model_stage2: result.usage.stage2?.model ?? null,
+          input_tokens:
+            result.usage.stage1.inputTokens +
+            (result.usage.stage2?.inputTokens ?? 0),
+          output_tokens:
+            result.usage.stage1.outputTokens +
+            (result.usage.stage2?.outputTokens ?? 0),
+          cost_usd: result.usage.totalCostUsd,
+          duration_ms: result.durationMs,
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', reportId);
+      if (error) throw new Error(`research_reports 完了更新に失敗: ${error.message}`);
+    },
+
+    async failReport(reportId, errorCode) {
+      await db
+        .from('research_reports')
+        .update({ status: 'failed', error_code: errorCode })
+        .eq('id', reportId);
+    },
+
+    async consumeCredit(userId, reportId, amount) {
+      const { data, error } = await db.rpc('consume_credit', {
+        p_user_id: userId,
+        p_report_id: reportId,
+        p_amount: amount,
+      });
+      if (error) throw new Error(`consume_credit 失敗: ${error.message}`);
+      return data === true;
+    },
+
+    async refundCredit(userId, reportId, amount) {
+      const { data, error } = await db.rpc('refund_credit', {
+        p_user_id: userId,
+        p_report_id: reportId,
+        p_amount: amount,
+      });
+      if (error) throw new Error(`refund_credit 失敗: ${error.message}`);
+      return data === true;
     },
   };
 }

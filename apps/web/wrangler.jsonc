@@ -27,7 +27,7 @@
   "vars": {
     "SUPABASE_URL": "https://uwnephsbglwrsdlahgpo.supabase.co",
     "NEXT_PUBLIC_SUPABASE_URL": "https://uwnephsbglwrsdlahgpo.supabase.co",
-    "NEXT_PUBLIC_APP_URL": "https://premeet.oshima6-27.workers.dev"
+    "NEXT_PUBLIC_APP_URL": "https://pre-meet.nexeed-lab.com"
   }
   // 秘密（暗号化が必要な値）は Secret として登録する。Secret はデプロイで消えない。
   //   ANTHROPIC_API_KEY / SUPABASE_SERVICE_ROLE_KEY / STRIPE_SECRET_KEY /

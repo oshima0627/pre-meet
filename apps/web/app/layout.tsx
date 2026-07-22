@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { SiteHeader } from '@/components/site-header';
 
 export const metadata: Metadata = {
   title: 'PreMeet — 会社URLで商談前リサーチを1枚に',
@@ -12,15 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ja">
       <body>
         <div className="mx-auto max-w-3xl px-4 py-6">
-          <header className="mb-8 flex items-center justify-between">
-            <a href="/" className="text-lg font-bold tracking-tight">
-              Pre<span className="text-indigo-600">Meet</span>
-            </a>
-            <nav className="flex gap-4 text-sm text-slate-600">
-              <a href="/pricing" className="hover:text-slate-900">料金</a>
-              <a href="/login" className="hover:text-slate-900">ログイン</a>
-            </nav>
-          </header>
+          <SiteHeader />
           {children}
           <footer className="mt-16 border-t pt-6 text-xs text-slate-500">
             <div className="flex flex-wrap gap-x-4 gap-y-1">

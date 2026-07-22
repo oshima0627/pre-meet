@@ -1,14 +1,37 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
 
 export default function Login() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   // 二重送信・多重OAuth遷移を防ぐためのローディング状態
   const [loading, setLoading] = useState<null | 'email' | 'google'>(null);
+  // ログイン状態を確認するまでフォームを出さない（ログイン済みならトップへ）
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    getSupabaseBrowser()
+      .auth.getUser()
+      .then(({ data }) => {
+        // 既にログイン済みならログイン画面を見せずトップへ戻す
+        if (data.user) router.replace('/');
+        else setChecking(false);
+      })
+      .catch(() => setChecking(false));
+  }, [router]);
+
+  if (checking) {
+    return (
+      <main className="flex justify-center py-20">
+        <p className="text-sm text-slate-400">読み込み中…</p>
+      </main>
+    );
+  }
 
   async function magicLink(e: React.FormEvent) {
     e.preventDefault();

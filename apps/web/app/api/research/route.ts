@@ -91,6 +91,15 @@ export async function POST(req: Request) {
     // AppError は想定内なので出さない（ログ汚染を避ける）。
     if (!(err instanceof AppError)) {
       console.error('[api/research] 想定外エラー:', err);
+      // 【一時デバッグ】原因特定のため実体をレスポンスにも出す。特定後に削除する。
+      const debug =
+        err instanceof Error
+          ? `${err.name}: ${err.message}\n${err.stack ?? ''}`
+          : String(err);
+      return NextResponse.json(
+        { error: { code: 'UNKNOWN', message: '想定外のエラーが発生しました', debug } },
+        { status },
+      );
     }
     return NextResponse.json(toErrorResponse(err), { status });
   }

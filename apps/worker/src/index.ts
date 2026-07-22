@@ -15,7 +15,7 @@ export { FactsSchema, HypothesisSchema } from './ai/schema.js';
 export type { Facts, Hypothesis } from './ai/schema.js';
 // 永続化・キャッシュ（Phase 1）
 export { isCacheFresh } from './db/repo.js';
-export type { ReportRepo, CachedCompany } from './db/repo.js';
+export type { ReportRepo, CachedCompany, ReportSummary } from './db/repo.js';
 export { createSupabaseRepo } from './db/supabase-repo.js';
 // レート制限・サーキットブレーカー（Phase 1・原価防衛）
 export {

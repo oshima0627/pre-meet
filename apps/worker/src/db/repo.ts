@@ -2,10 +2,22 @@ import type {
   ErrorCode,
   Facts,
   OwnContext,
+  ReportStatus,
   ResearchReport,
   Tier,
 } from '@premeet/shared';
 import type { ResearchResult } from '../pipeline.js';
+
+// 一覧表示用の軽量サマリ（本文の facts/hypothesis は含めない）。
+export interface ReportSummary {
+  slug: string;
+  tier: Tier;
+  status: ReportStatus;
+  companyName: string | null;
+  companyDomain: string | null;
+  createdAt: string;
+  completedAt: string | null;
+}
 
 // 会社キャッシュ（Stage1 の facts）。7日以内なら収集＋Stage1 を省略できる（docs/02）。
 export interface CachedCompany {
@@ -52,6 +64,13 @@ export interface ReportRepo {
   failReport(reportId: string, errorCode: ErrorCode): Promise<void>;
   // 結果ページ・共有リンク・進捗取得用。存在しなければ null。
   getReportBySlug(slug: string): Promise<ResearchReport | null>;
+  // 自分の過去レポート一覧（ログインは user_id、匿名は anon_id で絞る）。
+  // 新しい順。本文は含めず一覧表示に必要な項目だけ返す。
+  listReports(input: {
+    userId: string | null;
+    anonId: string | null;
+    limit?: number;
+  }): Promise<ReportSummary[]>;
 
   // クレジット消費/返還（RPC）。残高不足なら consume は false。
   consumeCredit(userId: string, reportId: string, amount: number): Promise<boolean>;

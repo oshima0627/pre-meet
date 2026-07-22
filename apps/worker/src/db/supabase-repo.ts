@@ -228,6 +228,42 @@ export function createSupabaseRepo(
       return report;
     },
 
+    async listReports({ userId, anonId, limit = 30 }) {
+      // 所有者が特定できない場合は空配列（他人のレポートを混ぜない）
+      if (!userId && !anonId) return [];
+
+      let query = db
+        .from('research_reports')
+        .select(
+          'slug, tier, status, created_at, completed_at, companies(name, domain)',
+        )
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      // ログイン済みは user_id、匿名は anon_id で絞る（マージ後はログイン側に寄る）
+      query = userId
+        ? query.eq('user_id', userId)
+        : query.eq('anon_id', anonId as string);
+
+      const { data, error } = await query;
+      if (error || !data) return [];
+
+      return data.map((r) => {
+        // companies は 1:1 だが型上は配列になり得るので吸収する
+        const company = (
+          Array.isArray(r.companies) ? r.companies[0] : r.companies
+        ) as { name: string | null; domain: string } | null;
+        return {
+          slug: r.slug,
+          tier: r.tier,
+          status: r.status,
+          companyName: company?.name ?? null,
+          companyDomain: company?.domain ?? null,
+          createdAt: r.created_at,
+          completedAt: r.completed_at,
+        };
+      });
+    },
+
     async consumeCredit(userId, reportId, amount) {
       const { data, error } = await db.rpc('consume_credit', {
         p_user_id: userId,

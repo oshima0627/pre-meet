@@ -29,6 +29,9 @@ export async function SiteHeader() {
         Pre<span className="text-indigo-600">Meet</span>
       </a>
       <nav className="flex items-center gap-4 text-sm text-slate-600">
+        <a href="/reports" className="hover:text-slate-900">
+          リサーチ一覧
+        </a>
         <a href="/pricing" className="hover:text-slate-900">
           料金
         </a>

@@ -180,6 +180,42 @@ export function createSupabaseRepo(
         .eq('id', reportId);
     },
 
+    async getReportBySlug(slug) {
+      const { data, error } = await db
+        .from('research_reports')
+        .select(
+          'slug, tier, status, error_code, facts, hypothesis, own_context, is_public, created_at, completed_at, companies(name, domain, source_urls)',
+        )
+        .eq('slug', slug)
+        .maybeSingle();
+      if (error || !data) return null;
+
+      const facts = data.facts ? FactsSchema.safeParse(data.facts) : null;
+      const hyp = data.hypothesis
+        ? HypothesisSchema.safeParse(data.hypothesis)
+        : null;
+      // companies は 1:1 だが Supabase の型上は配列になり得るので吸収する
+      const company = (
+        Array.isArray(data.companies) ? data.companies[0] : data.companies
+      ) as { name: string | null; domain: string; source_urls: string[] | null } | null;
+
+      const report: ResearchReport = {
+        slug: data.slug,
+        tier: data.tier,
+        status: data.status,
+        errorCode: data.error_code ?? null,
+        company: { name: company?.name ?? null, domain: company?.domain ?? '' },
+        facts: facts && facts.success ? facts.data : null,
+        hypothesis: hyp && hyp.success ? hyp.data : null,
+        ownContext: (data.own_context as ResearchReport['ownContext']) ?? null,
+        sourceUrls: company?.source_urls ?? [],
+        isPublic: data.is_public ?? false,
+        createdAt: data.created_at,
+        completedAt: data.completed_at,
+      };
+      return report;
+    },
+
     async consumeCredit(userId, reportId, amount) {
       const { data, error } = await db.rpc('consume_credit', {
         p_user_id: userId,

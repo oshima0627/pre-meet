@@ -50,6 +50,8 @@ export interface ReportRepo {
   createReport(input: CreateReportInput): Promise<string>; // 返り値=report_id（status=queued）
   completeReport(reportId: string, result: ResearchResult): Promise<void>;
   failReport(reportId: string, errorCode: ErrorCode): Promise<void>;
+  // 結果ページ・共有リンク・進捗取得用。存在しなければ null。
+  getReportBySlug(slug: string): Promise<ResearchReport | null>;
 
   // クレジット消費/返還（RPC）。残高不足なら consume は false。
   consumeCredit(userId: string, reportId: string, amount: number): Promise<boolean>;

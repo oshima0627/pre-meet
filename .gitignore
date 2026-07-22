@@ -12,3 +12,8 @@ out/
 scripts/companies.txt
 *.log
 .DS_Store
+
+# Next.js
+.next/
+apps/web/.next/
+*.tsbuildinfo

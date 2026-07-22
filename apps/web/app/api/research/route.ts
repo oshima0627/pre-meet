@@ -1,0 +1,81 @@
+import { NextResponse } from 'next/server';
+import {
+  handleResearchRequest,
+  loadConfig,
+  toErrorResponse,
+  AppError,
+  type HandleResearchInput,
+} from '@premeet/worker';
+import { getServerRepo } from '@/lib/repo';
+import { getKv } from '@/lib/kv';
+import {
+  getIpHash,
+  getOrCreateAnonId,
+  setAnonCookie,
+  todayUtc,
+} from '@/lib/request';
+import { getUserId } from '@/lib/supabase-server';
+
+// 生成は最大90秒（docs/01）。Node ランタイムで動かす（CF Pages では edge 化が必要）。
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+interface Body {
+  input?: string;
+  inputType?: 'url' | 'name';
+  tier?: 'free' | 'paid';
+  ownContext?: {
+    companyName: string;
+    serviceSummary: string;
+    targetCustomer: string;
+  } | null;
+}
+
+export async function POST(req: Request) {
+  try {
+    const body = (await req.json()) as Body;
+    if (!body.input || typeof body.input !== 'string') {
+      throw new AppError('INVALID_INPUT', 'input が必要です');
+    }
+
+    const [userId, ipHash, anon] = await Promise.all([
+      getUserId(),
+      getIpHash(),
+      getOrCreateAnonId(),
+    ]);
+
+    const input: HandleResearchInput = {
+      input: body.input,
+      inputType: body.inputType === 'name' ? 'name' : 'url',
+      tier: body.tier === 'paid' ? 'paid' : 'free',
+      ownContext: body.ownContext ?? null,
+      userId,
+      anonId: anon.anonId,
+      ipHash,
+      date: todayUtc(),
+    };
+
+    const config = loadConfig();
+    const result = await handleResearchRequest(
+      { repo: getServerRepo(), kv: getKv(), config },
+      input,
+    );
+
+    const res = NextResponse.json({
+      reportId: result.reportId,
+      slug: result.slug,
+      status: result.status,
+      cached: result.cached,
+      report: result.report,
+    });
+    // 匿名IDを発行した場合は Cookie を保存（次回以降のレート制限・履歴紐付け）
+    if (anon.isNew) {
+      const c = setAnonCookie(anon.anonId);
+      res.cookies.set(c.name, c.value, c.options);
+    }
+    return res;
+  } catch (err) {
+    const status = err instanceof AppError ? err.http : 500;
+    return NextResponse.json(toErrorResponse(err), { status });
+  }
+}

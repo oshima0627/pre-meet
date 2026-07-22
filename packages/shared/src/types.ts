@@ -1,9 +1,13 @@
 // ============================================================
 // 型の単一情報源（docs/02, CLAUDE.md）
 // Worker と Web で重複定義しないため、ドメイン型はここに集約する。
-// ※ AI 出力の型（Facts / Hypothesis）は zod スキーマから導出するため
-//   apps/worker/src/ai/schema.ts を単一情報源とする（そちらも一箇所定義）。
+// AI 出力の型（Facts / Hypothesis）と zod スキーマも shared に置き、
+// この import 一箇所（@premeet/shared）で型と検証を共有する。
 // ============================================================
+
+// AI 出力の型・zod スキーマを再輸出（単一の入口にする）
+export * from './schema.js';
+import type { Facts, Hypothesis } from './schema.js';
 
 // エラーコード表（docs/04）。AppError と 1:1 で対応させる
 export type ErrorCode =
@@ -48,4 +52,22 @@ export interface ModelUsage {
   inputTokens: number;
   outputTokens: number;
   costUsd: number;
+}
+
+// リサーチレポート（research_reports 行の公開ビュー）。
+// Worker が生成し、Web が表示する。両者でズレると結果表示が壊れるため
+// ここを単一情報源にする（docs/02）。API レスポンス（docs/04）もこの形に揃える。
+export interface ResearchReport {
+  slug: string;
+  tier: Tier;
+  status: ReportStatus;
+  errorCode: ErrorCode | null;
+  company: { name: string | null; domain: string };
+  facts: Facts | null; // セクション1〜4
+  hypothesis: Hypothesis | null; // セクション5〜8（paid のみ）
+  ownContext: OwnContext | null; // 生成時点の自社情報スナップショット
+  sourceUrls: string[]; // 収集元URL（透明性のため画面に出す）
+  isPublic: boolean;
+  createdAt: string; // ISO8601
+  completedAt: string | null;
 }

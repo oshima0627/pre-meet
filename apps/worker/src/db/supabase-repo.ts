@@ -235,5 +235,20 @@ export function createSupabaseRepo(
       if (error) throw new Error(`refund_credit 失敗: ${error.message}`);
       return data === true;
     },
+
+    async mergeAnonToUser(anonId, userId) {
+      const { error } = await db.rpc('merge_anon_to_user', {
+        p_anon_id: anonId,
+        p_user_id: userId,
+      });
+      if (error) throw new Error(`merge_anon_to_user 失敗: ${error.message}`);
+    },
+
+    async logEvent({ name, anonId, userId, props }) {
+      // 計測失敗で本流を止めない（呼び出し側で握りつぶす想定）
+      await db
+        .from('events')
+        .insert({ name, anon_id: anonId, user_id: userId, props: props ?? {} });
+    },
   };
 }

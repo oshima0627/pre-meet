@@ -56,6 +56,16 @@ export interface ReportRepo {
   // クレジット消費/返還（RPC）。残高不足なら consume は false。
   consumeCredit(userId: string, reportId: string, amount: number): Promise<boolean>;
   refundCredit(userId: string, reportId: string, amount: number): Promise<boolean>;
+
+  // 匿名→ログイン時のマージ（RPC。転換率に直結。docs/03）。
+  mergeAnonToUser(anonId: string, userId: string): Promise<void>;
+  // イベント計測（KPI。docs/03 events）。失敗しても本流を止めない想定。
+  logEvent(input: {
+    name: string;
+    anonId: string | null;
+    userId: string | null;
+    props?: Record<string, unknown>;
+  }): Promise<void>;
 }
 
 // generated_at が ttlDays 以内なら新鮮とみなす（純関数。テスト容易）。

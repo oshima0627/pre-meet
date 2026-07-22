@@ -56,10 +56,18 @@ export async function POST(req: Request) {
     };
 
     const config = loadConfig();
-    const result = await handleResearchRequest(
-      { repo: getServerRepo(), kv: getKv(), config },
-      input,
-    );
+    const repo = getServerRepo();
+    const result = await handleResearchRequest({ repo, kv: getKv(), config }, input);
+
+    // KPI 計測（失敗しても本流を止めない。docs/03 events）
+    void repo
+      .logEvent({
+        name: 'submit_url',
+        anonId: anon.anonId,
+        userId,
+        props: { tier: input.tier, cached: result.cached },
+      })
+      .catch(() => {});
 
     const res = NextResponse.json({
       reportId: result.reportId,

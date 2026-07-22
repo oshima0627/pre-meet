@@ -18,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </a>
             <nav className="flex gap-4 text-sm text-slate-600">
               <a href="/pricing" className="hover:text-slate-900">料金</a>
-              <a href="/bot" className="hover:text-slate-900">Bot</a>
+              <a href="/login" className="hover:text-slate-900">ログイン</a>
             </nav>
           </header>
           {children}

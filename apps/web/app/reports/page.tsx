@@ -54,7 +54,15 @@ export default async function ReportsPage() {
   const store = await cookies();
   const anonId = store.get('pm_anon')?.value ?? null;
 
-  const reports = await getServerRepo().listReports({ userId, anonId, limit: 50 });
+  const repo = getServerRepo();
+  // 一覧を出す前に、途中終了で「生成中」のまま固まった古い行を failed にし、有料は返金する
+  // （自己修復）。失敗しても一覧表示は続行する。
+  const staleBeforeIso = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  await repo
+    .reconcileStaleReports({ userId, anonId, staleBeforeIso })
+    .catch(() => 0);
+
+  const reports = await repo.listReports({ userId, anonId, limit: 50 });
 
   return (
     <main>

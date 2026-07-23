@@ -240,6 +240,44 @@ export function createSupabaseRepo(
       return report;
     },
 
+    async reconcileStaleReports({ userId, anonId, staleBeforeIso }) {
+      if (!userId && !anonId) return 0;
+
+      // 自分の・未完了(queued/collecting/generating)・staleBeforeIso より前の行を拾う
+      const inProgress = ['queued', 'collecting', 'generating'];
+      let q = db
+        .from('research_reports')
+        .select('id, tier, user_id')
+        .in('status', inProgress)
+        .lt('created_at', staleBeforeIso);
+      q = userId
+        ? q.eq('user_id', userId)
+        : q.eq('anon_id', anonId as string);
+      const { data, error } = await q;
+      if (error || !data || data.length === 0) return 0;
+
+      let fixed = 0;
+      for (const r of data) {
+        // 失敗マーク。競合で done になっていたら触らない（in-progress の時だけ更新）
+        const { error: upErr } = await db
+          .from('research_reports')
+          .update({ status: 'failed', error_code: 'AI_FAILED' })
+          .eq('id', r.id)
+          .in('status', inProgress);
+        if (upErr) continue;
+        // 有料はクレジット返還（refund_credit は report 単位で冪等）
+        if (r.tier === 'paid' && r.user_id) {
+          await db.rpc('refund_credit', {
+            p_user_id: r.user_id,
+            p_report_id: r.id,
+            p_amount: 1,
+          });
+        }
+        fixed++;
+      }
+      return fixed;
+    },
+
     async listReports({ userId, anonId, limit = 30 }) {
       // 所有者が特定できない場合は空配列（他人のレポートを混ぜない）
       if (!userId && !anonId) return [];

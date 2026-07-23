@@ -27,7 +27,10 @@
   "vars": {
     "SUPABASE_URL": "https://uwnephsbglwrsdlahgpo.supabase.co",
     "NEXT_PUBLIC_SUPABASE_URL": "https://uwnephsbglwrsdlahgpo.supabase.co",
-    "NEXT_PUBLIC_APP_URL": "https://pre-meet.nexeed-lab.com"
+    "NEXT_PUBLIC_APP_URL": "https://pre-meet.nexeed-lab.com",
+    // Stage2 の thinking は生成が90秒を超えやすいため本番では無効化して速度優先。
+    // 品質を優先して戻す場合は "adaptive" にする（コード側の既定は adaptive）。
+    "MODEL_STAGE2_THINKING": "disabled"
   }
   // 秘密（暗号化が必要な値）は Secret として登録する。Secret はデプロイで消えない。
   //   ANTHROPIC_API_KEY / SUPABASE_SERVICE_ROLE_KEY / STRIPE_SECRET_KEY /

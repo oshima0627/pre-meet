@@ -75,7 +75,7 @@ export default function Login() {
           </div>
         </div>
 
-        <div className="mt-6 rounded-2xl border bg-white p-6 shadow-sm sm:p-8">
+        <div className="card mt-6 p-6 sm:p-8">
           {sent ? (
             <div className="text-center">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
@@ -152,7 +152,7 @@ export default function Login() {
                 <button
                   type="submit"
                   disabled={loading !== null}
-                  className="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="btn-primary w-full"
                 >
                   {loading === 'email' ? '送信中…' : 'ログインリンクを受け取る'}
                 </button>

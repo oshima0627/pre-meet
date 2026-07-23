@@ -84,41 +84,81 @@ export function ResearchForm() {
     }
   }
 
+  // プラン選択カード（選択中はブランドのリングで強調）。
+  const tierCardCls = (selected: boolean) =>
+    `flex-1 cursor-pointer rounded-xl border p-3 text-sm transition ${
+      selected
+        ? 'border-indigo-500 bg-indigo-50/60 ring-2 ring-indigo-500/20'
+        : 'border-slate-200 bg-white hover:border-slate-300'
+    } ${loading ? 'pointer-events-none opacity-60' : ''}`;
+
   return (
-    <form onSubmit={submit} className="space-y-3">
-      <input
-        type="text"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="https://example.co.jp または 企業名"
-        className="w-full rounded-lg border border-slate-300 px-4 py-3 text-base shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-        disabled={loading}
-      />
+    <form onSubmit={submit} className="space-y-4">
+      <div className="relative">
+        {/* 入力欄の先頭にリンクアイコンを添えて用途を一目で伝える */}
+        <svg
+          viewBox="0 0 24 24"
+          className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+        </svg>
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="https://example.co.jp または 企業名"
+          className="field pl-11"
+          disabled={loading}
+        />
+      </div>
+
       {/* スマホでは縦積み（横並びだと長いラベルが窮屈に折り返すため） */}
-      <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:gap-4">
-        <label className="flex items-center gap-1.5">
-          <input
-            type="radio"
-            checked={tier === 'free'}
-            onChange={() => setTier('free')}
-            disabled={loading}
-          />
-          無料（事実の要約まで）
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <label className={tierCardCls(tier === 'free')}>
+          <span className="flex items-center gap-2">
+            <input
+              type="radio"
+              className="accent-indigo-600"
+              checked={tier === 'free'}
+              onChange={() => setTier('free')}
+              disabled={loading}
+            />
+            <span className="font-semibold text-slate-900">無料</span>
+          </span>
+          <span className="mt-1 block pl-6 text-xs text-slate-500">
+            事実の要約まで
+          </span>
         </label>
-        <label className="flex items-center gap-1.5">
-          <input
-            type="radio"
-            checked={tier === 'paid'}
-            onChange={() => setTier('paid')}
-            disabled={loading}
-          />
-          完全版（仮説・切り口・質問・反論）
+        <label className={tierCardCls(tier === 'paid')}>
+          <span className="flex items-center gap-2">
+            <input
+              type="radio"
+              className="accent-indigo-600"
+              checked={tier === 'paid'}
+              onChange={() => setTier('paid')}
+              disabled={loading}
+            />
+            <span className="font-semibold text-slate-900">完全版</span>
+            <span className="rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+              1クレジット
+            </span>
+          </span>
+          <span className="mt-1 block pl-6 text-xs text-slate-500">
+            仮説・切り口・質問・反論
+          </span>
         </label>
       </div>
+
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-lg bg-indigo-600 px-4 py-3 font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-70"
+        className="btn-primary w-full py-3 text-base"
       >
         {loading ? '生成中…' : 'リサーチシートを作成'}
       </button>

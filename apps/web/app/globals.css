@@ -2,5 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
-body { @apply bg-slate-50 text-slate-900 antialiased; }
+/* デザイントークン。ブランド色は指標を1箇所に集約し、各所で使い回す。 */
+:root {
+  color-scheme: light;
+  --brand: 99 102 241; /* indigo-500 */
+  --brand-2: 139 92 246; /* violet-500 */
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  /* 和文込みで破綻しない現代的なシステムフォント（外部フォント依存を増やさない）。 */
+  body {
+    @apply text-slate-800 antialiased;
+    font-family:
+      'Hiragino Kaku Gothic ProN', 'Noto Sans JP', -apple-system,
+      BlinkMacSystemFont, 'Segoe UI', Meiryo, sans-serif;
+    /* うっすらとしたグラデ背景で平坦さを消す。fixed で全画面に敷く。 */
+    background-color: #f7f8fc;
+    background-image:
+      radial-gradient(
+        55rem 55rem at 50% -18rem,
+        rgba(99, 102, 241, 0.1),
+        transparent 60%
+      ),
+      radial-gradient(
+        40rem 40rem at 100% -6rem,
+        rgba(139, 92, 246, 0.08),
+        transparent 55%
+      );
+    background-attachment: fixed;
+    min-height: 100dvh;
+  }
+  ::selection {
+    background: rgba(99, 102, 241, 0.18);
+  }
+  h1,
+  h2,
+  h3 {
+    @apply tracking-tight text-slate-900;
+  }
+}
+
+@layer components {
+  /* 共通カード。半透明＋やわらかい影＋うっすらブラーで浮遊感を出す。 */
+  .card {
+    @apply rounded-2xl border border-slate-200/70 bg-white/85 shadow-soft backdrop-blur-sm;
+  }
+  /* 主ボタン：ブランドのグラデ。押下でわずかに沈む。 */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-indigo-500 to-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition-all hover:to-indigo-700 hover:shadow-md hover:shadow-indigo-600/25 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  /* 副ボタン：白地の縁取り。 */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-60;
+  }
+  /* テキスト入力の共通スタイル。フォーカスでブランドのリングを出す。 */
+  .field {
+    @apply w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 disabled:opacity-60;
+  }
+  /* ブランド色のグラデ文字（見出しのアクセント）。 */
+  .text-gradient {
+    @apply bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent;
+  }
+}

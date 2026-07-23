@@ -1,4 +1,5 @@
 import { getSupabaseServer } from '@/lib/supabase-server';
+import { BrandMark } from './brand-mark';
 import { LogoutButton } from './logout-button';
 
 // ヘッダーのログイン状態を取得する。未ログイン・失敗時は「ログイン」導線を出す。
@@ -24,16 +25,26 @@ export async function SiteHeader() {
   const state = await getHeaderState();
 
   return (
-    <header className="mb-8 flex items-center justify-between">
-      <a href="/" className="text-lg font-bold tracking-tight">
-        Pre<span className="text-indigo-600">Meet</span>
+    <nav className="flex h-16 items-center justify-between">
+      <a href="/" className="group flex items-center gap-2">
+        <BrandMark className="h-8 w-8 shrink-0 drop-shadow-sm transition group-hover:scale-105" />
+        <span className="text-lg font-bold tracking-tight text-slate-900">
+          Pre<span className="text-gradient">Meet</span>
+        </span>
       </a>
+
       {/* スマホは項目が多いと溢れるため、文字・余白を詰める（sm以上で通常サイズ） */}
-      <nav className="flex items-center gap-2.5 text-xs text-slate-600 sm:gap-4 sm:text-sm">
-        <a href="/reports" className="hover:text-slate-900">
+      <div className="flex items-center gap-1 text-xs text-slate-600 sm:gap-3 sm:text-sm">
+        <a
+          href="/reports"
+          className="rounded-lg px-2 py-1.5 font-medium transition hover:bg-slate-100 hover:text-slate-900"
+        >
           リサーチ一覧
         </a>
-        <a href="/pricing" className="hover:text-slate-900">
+        <a
+          href="/pricing"
+          className="rounded-lg px-2 py-1.5 font-medium transition hover:bg-slate-100 hover:text-slate-900"
+        >
           料金
         </a>
         {state.loggedIn ? (
@@ -43,7 +54,7 @@ export async function SiteHeader() {
             <a
               href="/pricing"
               title="保有クレジット（クリックで追加購入）"
-              className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-indigo-50 px-2 py-1 font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-100 hover:bg-indigo-100 sm:px-3"
+              className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-gradient-to-r from-indigo-50 to-violet-50 px-2.5 py-1 font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-100 transition hover:from-indigo-100 hover:to-violet-100 sm:px-3"
             >
               <span aria-hidden>🪙</span>
               {state.balance}
@@ -52,11 +63,14 @@ export async function SiteHeader() {
             <LogoutButton />
           </>
         ) : (
-          <a href="/login" className="hover:text-slate-900">
+          <a
+            href="/login"
+            className="btn-primary px-3 py-1.5 text-xs sm:px-4 sm:text-sm"
+          >
             ログイン
           </a>
         )}
-      </nav>
-    </header>
+      </div>
+    </nav>
   );
 }

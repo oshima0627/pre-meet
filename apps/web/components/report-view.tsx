@@ -1,17 +1,21 @@
 import type { ResearchReport } from '@premeet/shared';
 import { LockedSection } from './locked-section';
 
-// 確信度の enum を日本語ラベルに変換する（UIに英語の生値を出さない）
-const CONFIDENCE_LABEL: Record<string, string> = {
-  high: '確度 高',
-  medium: '確度 中',
-  low: '確度 低',
+// 確信度の enum を日本語ラベル＋配色に変換する（UIに英語の生値を出さない）。
+// 高＝緑・中＝琥珀・低＝灰で、ひと目で確度が伝わるようにする。
+const CONFIDENCE: Record<string, { label: string; cls: string }> = {
+  high: { label: '確度 高', cls: 'bg-emerald-50 text-emerald-700 ring-emerald-100' },
+  medium: { label: '確度 中', cls: 'bg-amber-50 text-amber-700 ring-amber-100' },
+  low: { label: '確度 低', cls: 'bg-slate-100 text-slate-500 ring-slate-200' },
 };
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border bg-white p-4">
-      <h2 className="mb-2 font-semibold text-slate-800">{title}</h2>
+    <section className="card p-5">
+      <h2 className="mb-3 flex items-center gap-2 font-semibold text-slate-900">
+        <span className="h-4 w-1 rounded-full bg-gradient-to-b from-indigo-500 to-violet-500" />
+        {title}
+      </h2>
       {children}
     </section>
   );
@@ -22,11 +26,16 @@ export function ReportView({ report }: { report: ResearchReport }) {
   const h = report.hypothesis;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* 免責（docs/07：常時表示） */}
-      <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-800">
-        本レポートは公開情報をもとにAIが自動生成したものであり、事実と異なる内容を含む可能性があります。
-        特に「想定課題」「想定反論」等の推測部分は実際と一致することを保証しません。ご利用に際しては必ずご自身でご確認ください。
+      <p className="flex gap-2 rounded-xl border border-amber-200/70 bg-amber-50 p-3 text-xs leading-relaxed text-amber-800">
+        <span aria-hidden className="shrink-0">
+          ⚠️
+        </span>
+        <span>
+          本レポートは公開情報をもとにAIが自動生成したものであり、事実と異なる内容を含む可能性があります。
+          特に「想定課題」「想定反論」等の推測部分は実際と一致することを保証しません。ご利用に際しては必ずご自身でご確認ください。
+        </span>
       </p>
 
       {f && (
@@ -95,25 +104,42 @@ export function ReportView({ report }: { report: ResearchReport }) {
       {h ? (
         <>
           <Card title="想定課題 仮説">
-            <ul className="space-y-2">
-              {h.hypotheses.map((x, i) => (
-                <li key={i} className="text-sm">
-                  <span className="rounded bg-indigo-50 px-1 text-xs text-indigo-700">
-                    {CONFIDENCE_LABEL[x.confidence] ?? x.confidence}
-                  </span>{' '}
-                  <span className="font-medium">{x.title}</span>
-                  <p className="text-slate-700">{x.detail}</p>
-                  <p className="text-xs text-slate-500">根拠: {x.evidence}</p>
-                </li>
-              ))}
+            <ul className="space-y-3">
+              {h.hypotheses.map((x, i) => {
+                const c = CONFIDENCE[x.confidence];
+                return (
+                  <li
+                    key={i}
+                    className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-sm"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${
+                          c?.cls ?? 'bg-slate-100 text-slate-500 ring-slate-200'
+                        }`}
+                      >
+                        {c?.label ?? x.confidence}
+                      </span>
+                      <span className="font-semibold text-slate-900">
+                        {x.title}
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-slate-700">{x.detail}</p>
+                    <p className="mt-1 text-xs text-slate-500">根拠: {x.evidence}</p>
+                  </li>
+                );
+              })}
             </ul>
           </Card>
           <Card title="刺さる切り口">
-            <ul className="space-y-2 text-sm">
+            <ul className="space-y-3 text-sm">
               {h.angles.map((a, i) => (
-                <li key={i}>
-                  <span className="font-medium">{a.title}</span>
-                  <p className="text-slate-700">「{a.opening}」</p>
+                <li
+                  key={i}
+                  className="rounded-xl border border-slate-100 bg-slate-50/50 p-3"
+                >
+                  <span className="font-semibold text-slate-900">{a.title}</span>
+                  <p className="mt-1 text-slate-700">「{a.opening}」</p>
                 </li>
               ))}
             </ul>
@@ -144,8 +170,9 @@ export function ReportView({ report }: { report: ResearchReport }) {
       )}
 
       {report.sourceUrls.length > 0 && (
-        <p className="break-all text-xs text-slate-400">
-          収集元: {report.sourceUrls.slice(0, 8).join(' / ')}
+        <p className="break-all px-1 text-xs text-slate-400">
+          <span className="font-medium text-slate-500">収集元:</span>{' '}
+          {report.sourceUrls.slice(0, 8).join(' / ')}
         </p>
       )}
     </div>

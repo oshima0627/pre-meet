@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import type Stripe from 'stripe';
+import Stripe from 'stripe';
 import { getStripe, creditExpiryIso } from '@/lib/stripe';
 
 export const runtime = 'nodejs';
@@ -17,7 +17,15 @@ export async function POST(req: Request) {
   const raw = await req.text(); // 署名検証には生ボディが必要
   let event: Stripe.Event;
   try {
-    event = getStripe().webhooks.constructEvent(raw, sig, secret);
+    // Cloudflare Workers では同期版の署名検証（Node crypto 依存）が使えないため、
+    // SubtleCrypto を使う非同期版 constructEventAsync で検証する。
+    event = await getStripe().webhooks.constructEventAsync(
+      raw,
+      sig,
+      secret,
+      undefined,
+      Stripe.createSubtleCryptoProvider(),
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : 'invalid';
     return NextResponse.json({ error: `signature: ${message}` }, { status: 400 });

@@ -249,6 +249,8 @@ export function createSupabaseRepo(
         .select(
           'slug, tier, status, created_at, completed_at, companies(name, domain)',
         )
+        // 生成失敗は一覧に出さない（正常完了＋生成中のみ表示する）
+        .neq('status', 'failed')
         .order('created_at', { ascending: false })
         .limit(limit);
       // ログイン済みは user_id、匿名は anon_id で絞る（マージ後はログイン側に寄る）
@@ -259,7 +261,18 @@ export function createSupabaseRepo(
       const { data, error } = await query;
       if (error || !data) return [];
 
-      return data.map((r) => {
+      // 生成中(queued/collecting/generating)はタイムアウト等で途中終了すると
+      // 行が残り続ける（catch に到達できず failed にできない）。一定時間を超えた
+      // 「止まったままの生成中」は表示しない（＝実質失敗として一覧から隠す）。
+      const STALE_MS = 10 * 60 * 1000; // 10分。生成は通常これより十分短い
+      const staleBefore = Date.now() - STALE_MS;
+
+      return data
+        .filter((r) => {
+          if (r.status === 'done') return true;
+          return new Date(r.created_at).getTime() >= staleBefore;
+        })
+        .map((r) => {
         // companies は 1:1 だが型上は配列になり得るので吸収する
         const company = (
           Array.isArray(r.companies) ? r.companies[0] : r.companies

@@ -162,13 +162,15 @@ export function createSupabaseRepo(
       return data.id as string;
     },
 
-    async completeReport(reportId, result) {
+    async completeReport(reportId, result, ownContext) {
       const { error } = await db
         .from('research_reports')
         .update({
           status: 'done',
           facts: result.facts,
           hypothesis: result.hypothesis,
+          // 自社URLから解決した実際の自社文脈で上書き（createReport 時点は生の入力）
+          own_context: ownContext,
           model_stage1: result.usage.stage1.model,
           model_stage2: result.usage.stage2?.model ?? null,
           input_tokens:

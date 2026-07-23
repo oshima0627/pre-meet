@@ -208,7 +208,7 @@ ${own ? `
 }
 
 # 個数の指定
-hypotheses: 3件 / angles: 3件 / questions: 10件 / objections: 5件
+hypotheses: 3件 / angles: 3件 / questions: 12件 / objections: 6件 / meetingStrategy: 1件
 ただし、根拠が不十分な項目を数合わせで生成することは禁止です。
 
 # 相手企業の事実情報
@@ -232,6 +232,21 @@ ${JSON.stringify(facts, null, 2)}
   だけを受け取り、BFF が自社サイトの Stage1 facts（社名・事業概要・顧客層）を抽出して
   companyName / serviceSummary / targetCustomer を埋める。自社factsは会社単位キャッシュが
   効くので、同じ売り手の繰り返し利用は追加コストがほぼ無い。取得失敗時は用途だけで続行する。
+- 自社文脈があるときは angles / questions / objections を必ず「相手の事実 × 依頼主のサービス」の
+  接点で作らせる（buildOwnBlock で明示）。使った自社文脈は完了時に own_context に保存し、
+  結果画面で「自社情報を加味」表示に使う。
+
+### 出力の肉付け・実用度の強化
+
+「読んで終わり」でなく商談でそのまま使える濃さにするための強化。
+
+- **Stage1**: summary を4〜6文（事業/収益モデル/主要顧客/強み）に、services は主要3〜8件・
+  「誰の・何を・どう解決」まで、recentNews は最大6件。`businessModel` を追加。
+- **Stage2**: 各 detail/opening/response を「そのまま話せる文章」で具体化（固有名詞を織り込む）。
+  質問は SPIN 的な流れ（現状把握→課題深掘り→示唆→決裁/予算/時期）。**新セクション
+  `meetingStrategy`（keyMessage / goal / nextAction）** で「次に何をするか」まで出す。
+- **推論**: Stage2 の思考は既定を `adaptive`（`MODEL_STAGE2_THINKING` で `disabled` に戻せる）、
+  出力上限も引き上げ（肉付けした出力が切れないように）。原価は上がるため env で調整可能に保つ。
 
 ---
 

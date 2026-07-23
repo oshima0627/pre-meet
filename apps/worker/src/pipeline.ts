@@ -140,7 +140,7 @@ export async function runResearch(
         prompt: buildStage1Prompt(prepared.pages),
         schema: FactsSchema,
       },
-      { thinking: 'disabled', maxTokens: 8_000 },
+      { thinking: 'disabled', maxTokens: 10_000 },
     );
     facts = stage1.data;
     sourceUrls = collected.sourceUrls;
@@ -164,7 +164,9 @@ export async function runResearch(
         prompt: buildStage2Prompt(facts, args.ownContext ?? null),
         schema: HypothesisSchema,
       },
-      { thinking: config.stage2Thinking, maxTokens: 12_000 },
+      // adaptive thinking 時は思考トークンも max_tokens に含まれるため、肉付けした
+      // 出力が切れないよう余裕を持たせる（docs/05: Stage2はケチらない）。
+      { thinking: config.stage2Thinking, maxTokens: 16_000 },
     );
     hypothesis = stage2.data;
     stage2Usage = stage2.usage;

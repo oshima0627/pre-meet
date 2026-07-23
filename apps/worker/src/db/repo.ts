@@ -67,7 +67,12 @@ export interface ReportRepo {
     ttlDays: number,
   ): Promise<ResearchReport | null>;
   createReport(input: CreateReportInput): Promise<string>; // 返り値=report_id（status=queued）
-  completeReport(reportId: string, result: ResearchResult): Promise<void>;
+  // 完了保存。ownContext は自社URLから解決した実際の文脈（結果画面の「加味」表示に使う）。
+  completeReport(
+    reportId: string,
+    result: ResearchResult,
+    ownContext: OwnContext | null,
+  ): Promise<void>;
   failReport(reportId: string, errorCode: ErrorCode): Promise<void>;
   // 結果ページ・共有リンク・進捗取得用。存在しなければ null。
   // viewer を渡すと「公開レポート or 所有者本人」以外には null を返す（スラッグ

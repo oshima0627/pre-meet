@@ -36,6 +36,11 @@ export function ResearchForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0); // 経過秒
+  // 自社情報（任意）。完全版(paid)の切り口・質問・反論を、依頼主の商材に合わせて
+  // 最適化するための文脈。無料版は Stage2 を実行しないため送らない。
+  const [ownService, setOwnService] = useState('');
+  const [ownTarget, setOwnTarget] = useState('');
+  const [ownCompany, setOwnCompany] = useState('');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const router = useRouter();
 
@@ -69,7 +74,20 @@ export function ResearchForm() {
       const res = await fetch('/api/research', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ input, inputType: guessType(input), tier }),
+        body: JSON.stringify({
+          input,
+          inputType: guessType(input),
+          tier,
+          // 完全版のときだけ自社文脈を送る（無料版では使われず、キャッシュも外れるため）。
+          ownContext:
+            tier === 'paid' && ownService.trim()
+              ? {
+                  companyName: ownCompany.trim(),
+                  serviceSummary: ownService.trim(),
+                  targetCustomer: ownTarget.trim(),
+                }
+              : null,
+        }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -154,6 +172,44 @@ export function ResearchForm() {
           </span>
         </label>
       </div>
+
+      {/* 自社情報（任意）。完全版のときだけ表示・送信し、切り口を商材に最適化する。 */}
+      {tier === 'paid' && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+          <p className="text-sm font-semibold text-slate-800">
+            自社情報 <span className="font-normal text-slate-400">（任意）</span>
+          </p>
+          <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+            入力すると、完全版の切り口・ヒアリング質問・想定反論をあなたの商材に合わせて最適化します。
+          </p>
+          <div className="mt-3 space-y-2">
+            <textarea
+              value={ownService}
+              onChange={(e) => setOwnService(e.target.value)}
+              placeholder="自社サービスの概要（何を・誰に提供しているか）"
+              rows={2}
+              className="field resize-none py-2.5 text-sm"
+              disabled={loading}
+            />
+            <input
+              type="text"
+              value={ownTarget}
+              onChange={(e) => setOwnTarget(e.target.value)}
+              placeholder="想定顧客（例: 従業員100〜500名の製造業）"
+              className="field py-2.5 text-sm"
+              disabled={loading}
+            />
+            <input
+              type="text"
+              value={ownCompany}
+              onChange={(e) => setOwnCompany(e.target.value)}
+              placeholder="自社名（任意）"
+              className="field py-2.5 text-sm"
+              disabled={loading}
+            />
+          </div>
+        </div>
+      )}
 
       <button
         type="submit"

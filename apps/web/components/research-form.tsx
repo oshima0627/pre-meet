@@ -270,10 +270,7 @@ export function ResearchForm() {
               );
             })}
           </ul>
-          <p className="mt-3 text-xs text-slate-500">
-            経過 {elapsed} 秒
-            {tier === 'paid' && '（完全版は最大90秒ほどかかります）'}
-          </p>
+          <p className="mt-3 text-xs text-slate-500">経過 {elapsed} 秒</p>
         </div>
       )}
 

@@ -27,13 +27,11 @@ export interface HandleResearchDeps {
   config: WorkerConfig;
 }
 
-export interface ResearchResponse {
-  reportId: string | null; // キャッシュ返却時は既存レポート（新規行なし）
-  slug: string;
-  status: 'done';
-  cached: boolean;
-  report: ResearchReport;
-}
+// beginResearch の結果。キャッシュヒットは即結果、そうでなければ queued ハンドルを返し、
+// 実生成は finishResearch（背景実行）に委ねる（同期リクエストの90秒の壁を外す）。
+export type BeginResult =
+  | { kind: 'cached'; slug: string; report: ResearchReport }
+  | { kind: 'queued'; reportId: string; slug: string; startUrl: string };
 
 // 自社URLが指定されていれば、その公開情報（Stage1 facts）から自社文脈を補完する。
 // 自社factsは会社単位キャッシュ（getFreshCompany）が効くので、同じ売り手の
@@ -79,14 +77,14 @@ function makeSlug(): string {
   return out;
 }
 
-// docs/04 の処理順を厳守する:
+// 前半（同期・リクエスト内で完結）: docs/04 の処理順を厳守する。
 //   1. バリデーション → 2. 正規化 → 3. キャッシュ確認（課金より前！）
-//   → 4. free=レート制限 / paid=クレジット消費 → 5. レポート作成
-//   → 6. 生成 → 7. 完了保存（失敗時はクレジット返還）
-export async function handleResearchRequest(
+//   → 4. free=レート制限 / paid=クレジット消費 → 5. レポート作成(queued)
+// キャッシュヒットは即結果、それ以外は queued ハンドルを返す。実生成は finishResearch へ。
+export async function beginResearch(
   deps: HandleResearchDeps,
   input: HandleResearchInput,
-): Promise<ResearchResponse> {
+): Promise<BeginResult> {
   const { repo, kv, config } = deps;
 
   // 1-2) バリデーション＋正規化（企業名は公式サイトを特定）
@@ -109,13 +107,7 @@ export async function handleResearchRequest(
       config.cacheTtlDays,
     );
     if (cachedReport) {
-      return {
-        reportId: null,
-        slug: cachedReport.slug,
-        status: 'done',
-        cached: true,
-        report: cachedReport,
-      };
+      return { kind: 'cached', slug: cachedReport.slug, report: cachedReport };
     }
   }
 
@@ -176,15 +168,25 @@ export async function handleResearchRequest(
     }
   }
 
-  // 自社URLがあれば公開情報から自社文脈を補完してから生成する（用途と併用）。
-  // 課金確定後に実行し、未認証・残高不足で無駄な自社クロールが走らないようにする。
-  const effectiveOwn = await resolveOwnContext(input.ownContext, config, repo);
+  return { kind: 'queued', reportId, slug, startUrl: start.toString() };
+}
 
-  // 6-7) 生成 → 完了保存。失敗時は必ずクレジット返還（docs/02 原則）
+// 後半（背景実行）: 収集→Stage1→Stage2→完了保存。同期リクエストから切り離して
+// 実行することで、90秒の壁を越える大きめのデータでも完了できる（waitUntil で駆動）。
+// 例外は投げず内部で処理する（失敗時は failed マーク＋有料はクレジット返還）。
+export async function finishResearch(
+  deps: HandleResearchDeps,
+  input: HandleResearchInput,
+  reportId: string,
+  startUrl: string,
+): Promise<void> {
+  const { repo, config } = deps;
+  // 自社URLがあれば公開情報から自社文脈を補完してから生成する（用途と併用）。
+  const effectiveOwn = await resolveOwnContext(input.ownContext, config, repo);
   try {
     const result = await runResearchCached(
       {
-        input: start.toString(),
+        input: startUrl,
         inputType: 'url',
         tier: input.tier,
         ownContext: effectiveOwn,
@@ -193,30 +195,17 @@ export async function handleResearchRequest(
       repo,
     );
     await repo.completeReport(reportId, result, effectiveOwn);
-
-    const nowIso = new Date().toISOString();
-    const report: ResearchReport = {
-      slug,
-      tier: input.tier,
-      status: 'done',
-      errorCode: null,
-      company: { name: result.facts.companyName, domain: result.domain },
-      facts: result.facts,
-      hypothesis: result.hypothesis,
-      ownContext: effectiveOwn,
-      sourceUrls: result.sourceUrls,
-      isPublic: false,
-      createdAt: nowIso,
-      completedAt: nowIso,
-    };
-    return { reportId, slug, status: 'done', cached: false, report };
   } catch (err) {
     // 価値ある結果を返せなかった場合はクレジットを返す（返金対応を発生させない）
     const code = err instanceof AppError ? err.code : 'AI_FAILED';
-    await repo.failReport(reportId, code);
-    if (input.tier === 'paid' && input.userId) {
-      await repo.refundCredit(input.userId, reportId, CREDIT_PER_REPORT);
+    try {
+      await repo.failReport(reportId, code);
+      if (input.tier === 'paid' && input.userId) {
+        await repo.refundCredit(input.userId, reportId, CREDIT_PER_REPORT);
+      }
+    } catch (e) {
+      // 後始末自体の失敗は /reports の reconcileStaleReports が拾う
+      console.error('[finishResearch] 後始末に失敗:', e);
     }
-    throw err;
   }
 }

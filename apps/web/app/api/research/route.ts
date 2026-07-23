@@ -16,6 +16,7 @@ import {
   todayUtc,
 } from '@/lib/request';
 import { getUserId } from '@/lib/supabase-server';
+import type { OwnContext } from '@premeet/shared';
 
 // 生成は最大90秒（docs/01）。Node ランタイムで動かす（CF Pages では edge 化が必要）。
 export const runtime = 'nodejs';
@@ -25,11 +26,8 @@ interface Body {
   input?: string;
   inputType?: 'url' | 'name';
   tier?: 'free' | 'paid';
-  ownContext?: {
-    companyName: string;
-    serviceSummary: string;
-    targetCustomer: string;
-  } | null;
+  // 自社文脈（用途・自社サービス等）。型は shared を単一の情報源とする（CLAUDE.md）。
+  ownContext?: OwnContext | null;
 }
 
 export async function POST(req: Request) {

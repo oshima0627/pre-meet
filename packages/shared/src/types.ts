@@ -39,11 +39,24 @@ export interface CollectedPage {
   kind: 'top' | 'about' | 'service' | 'case' | 'recruit' | 'news' | 'other';
 }
 
-// 自社サービス情報（US-07）。生成時点の値をスナップショットで保持する
+// 売り手（依頼主）の用途。完全版の切り口・質問・反論を、この観点で最適化する。
+// 「相手の業種」とは別軸で、「どの商材を売る営業か」を表す。
+export type SellerUseCase =
+  | 'ai_dx' // AIコンサル・DX支援
+  | 'recruiting' // 人材紹介・採用支援
+  | 'web_marketing' // Web制作・マーケティング支援
+  | 'saas_system' // 業務システム・SaaS
+  | 'advertising' // 広告運用・代理店
+  | 'consulting' // 経営・業務コンサル
+  | 'other'; // その他/未指定（汎用）
+
+// 自社サービス情報（US-07）。生成時点の値をスナップショットで保持する。
+// すべて任意（未入力なら汎用出力）。useCase だけでも切り口の最適化に効く。
 export interface OwnContext {
-  companyName: string;
-  serviceSummary: string;
-  targetCustomer: string;
+  useCase?: SellerUseCase | null;
+  companyName?: string | null;
+  serviceSummary?: string | null;
+  targetCustomer?: string | null;
 }
 
 // モデル呼び出し1回分の使用量。原価計測（docs/03 の cost_usd）に使う

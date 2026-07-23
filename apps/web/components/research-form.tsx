@@ -42,8 +42,14 @@ const STEPS_PAID: Step[] = [
   { label: '仕上げています', atSec: 55 },
 ];
 
-export function ResearchForm() {
+// 生成完了までのポーリング上限（背景生成が長引いても永遠に待たない）。
+const POLL_MAX_MS = 5 * 60 * 1000;
+const POLL_INTERVAL_MS = 2500;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+export function ResearchForm({ loggedIn = false }: { loggedIn?: boolean }) {
   const [input, setInput] = useState('');
+  // 未ログインは完全版を選べない（下の選択UIでロック）。既定は無料。
   const [tier, setTier] = useState<'free' | 'paid'>('free');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,12 +109,52 @@ export function ResearchForm() {
         setError(json?.error?.message ?? '生成に失敗しました');
         return;
       }
-      router.push(`/r/${json.slug}`);
+      // キャッシュヒットは即完了。それ以外は背景生成なので状態をポーリングする。
+      if (json.status === 'done') {
+        router.push(`/r/${json.slug}`);
+        return;
+      }
+      const finished = await pollUntilDone(json.slug);
+      if (finished.ok) router.push(`/r/${json.slug}`);
+      else setError(finished.message);
     } catch {
       setError('通信に失敗しました。しばらくして再度お試しください。');
     } finally {
       setLoading(false);
     }
+  }
+
+  // 背景生成の完了を /api/status/[slug] で待つ（done→成功 / failed→失敗 / 時間切れ）。
+  async function pollUntilDone(
+    slug: string,
+  ): Promise<{ ok: true } | { ok: false; message: string }> {
+    const started = Date.now();
+    while (Date.now() - started < POLL_MAX_MS) {
+      await sleep(POLL_INTERVAL_MS);
+      try {
+        const r = await fetch(`/api/status/${slug}`, { cache: 'no-store' });
+        if (r.ok) {
+          const j = await r.json();
+          if (j.status === 'done') return { ok: true };
+          if (j.status === 'failed') {
+            return {
+              ok: false,
+              message:
+                j.report?.errorCode === 'THIN_CONTENT'
+                  ? '公開情報が少なく、十分なリサーチができませんでした。'
+                  : '生成に失敗しました。クレジットは返還されます。',
+            };
+          }
+        }
+      } catch {
+        // 一時的な通信エラーは無視して次のポーリングへ
+      }
+    }
+    return {
+      ok: false,
+      message:
+        '生成に時間がかかっています。しばらくしてから「リサーチ一覧」でご確認ください。',
+    };
   }
 
   // プラン選択カード（選択中はブランドのリングで強調）。
@@ -162,24 +208,49 @@ export function ResearchForm() {
             事実の要約まで
           </span>
         </label>
-        <label className={tierCardCls(tier === 'paid')}>
-          <span className="flex items-center gap-2">
-            <input
-              type="radio"
-              className="accent-indigo-600"
-              checked={tier === 'paid'}
-              onChange={() => setTier('paid')}
-              disabled={loading}
-            />
-            <span className="font-semibold text-slate-900">完全版</span>
-            <span className="rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-              1クレジット
+        {loggedIn ? (
+          <label className={tierCardCls(tier === 'paid')}>
+            <span className="flex items-center gap-2">
+              <input
+                type="radio"
+                className="accent-indigo-600"
+                checked={tier === 'paid'}
+                onChange={() => setTier('paid')}
+                disabled={loading}
+              />
+              <span className="font-semibold text-slate-900">完全版</span>
+              <span className="rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                1クレジット
+              </span>
             </span>
-          </span>
-          <span className="mt-1 block pl-6 text-xs text-slate-500">
-            仮説・切り口・質問・反論
-          </span>
-        </label>
+            <span className="mt-1 block pl-6 text-xs text-slate-500">
+              仮説・切り口・質問・反論
+            </span>
+          </label>
+        ) : (
+          // 未ログインは完全版を選べない。モダンに「ロック→ログインで解放」を見せる。
+          <a
+            href="/login"
+            aria-disabled
+            className="group relative flex-1 overflow-hidden rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-sm transition hover:border-indigo-300 hover:bg-indigo-50/40"
+          >
+            <span className="flex items-center gap-2">
+              <span aria-hidden className="text-slate-400">
+                🔒
+              </span>
+              <span className="font-semibold text-slate-500">完全版</span>
+              <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
+                1クレジット
+              </span>
+            </span>
+            <span className="mt-1 block pl-6 text-xs text-slate-400">
+              仮説・切り口・質問・反論
+            </span>
+            <span className="mt-2 flex items-center gap-1 pl-6 text-xs font-semibold text-indigo-600 group-hover:underline">
+              ログインで解放 →
+            </span>
+          </a>
+        )}
       </div>
 
       {/* 自社情報（任意）。完全版のときだけ表示・送信し、切り口を商材に最適化する。 */}

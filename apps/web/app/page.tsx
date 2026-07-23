@@ -1,4 +1,5 @@
 import { ResearchForm } from '@/components/research-form';
+import { getUserId } from '@/lib/supabase-server';
 
 // 特徴カードのアイコン（インラインSVG。外部依存を増やさない）。
 const FEATURES: { title: string; desc: string; icon: React.ReactNode }[] = [
@@ -31,7 +32,9 @@ const FEATURES: { title: string; desc: string; icon: React.ReactNode }[] = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  // 未ログインは完全版を選べないようにするため、ログイン状態をフォームへ渡す。
+  const loggedIn = (await getUserId()) != null;
   return (
     <main>
       <section className="mb-8 text-center sm:mb-10 sm:pt-4">
@@ -52,7 +55,7 @@ export default function Home() {
       </section>
 
       <section className="card p-5 shadow-lift sm:p-6">
-        <ResearchForm />
+        <ResearchForm loggedIn={loggedIn} />
       </section>
 
       <section className="mt-12 grid gap-4 sm:grid-cols-3">

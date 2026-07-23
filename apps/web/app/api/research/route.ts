@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import {
-  handleResearchRequest,
+  beginResearch,
+  finishResearch,
   loadConfig,
   toErrorResponse,
   AppError,
@@ -8,7 +9,7 @@ import {
 } from '@premeet/worker';
 import { getServerRepo } from '@/lib/repo';
 import { getKv } from '@/lib/kv';
-import { getRateLimitKv } from '@/lib/cf';
+import { getRateLimitKv, getExecutionCtx } from '@/lib/cf';
 import {
   getIpHash,
   getOrCreateAnonId,
@@ -58,7 +59,10 @@ export async function POST(req: Request) {
     const repo = getServerRepo();
     // 本番は Cloudflare KV（共有）、ローカルはメモリにフォールバック
     const kv = getKv(await getRateLimitKv());
-    const result = await handleResearchRequest({ repo, kv, config }, input);
+    const deps = { repo, kv, config };
+
+    // 前半（同期）: 検証・キャッシュ確認・課金・レポート作成まで
+    const begin = await beginResearch(deps, input);
 
     // KPI 計測（失敗しても本流を止めない。docs/03 events）
     void repo
@@ -66,18 +70,38 @@ export async function POST(req: Request) {
         name: 'submit_url',
         anonId: anon.anonId,
         userId,
-        props: { tier: input.tier, cached: result.cached },
+        props: { tier: input.tier, cached: begin.kind === 'cached' },
       })
       .catch(() => {});
 
-    const res = NextResponse.json({
-      reportId: result.reportId,
-      slug: result.slug,
-      status: result.status,
-      cached: result.cached,
-      report: result.report,
-    });
-    // 匿名IDを発行した場合は Cookie を保存（次回以降のレート制限・履歴紐付け）
+    // キャッシュヒットは即結果を返す（生成なし）
+    let payload:
+      | { slug: string; status: 'done'; cached: true; report: unknown }
+      | { slug: string; reportId: string; status: 'queued'; cached: false };
+    if (begin.kind === 'cached') {
+      payload = {
+        slug: begin.slug,
+        status: 'done',
+        cached: true,
+        report: begin.report,
+      };
+    } else {
+      // 生成本体はレスポンス後も背景で走らせる（waitUntil）＝90秒の壁を回避。
+      // クライアントは /api/status/[slug] をポーリングして完了を待つ。
+      const job = finishResearch(deps, input, begin.reportId, begin.startUrl);
+      const ctx = await getExecutionCtx();
+      if (ctx) ctx.waitUntil(job);
+      else void job; // next dev 等（プロセスが生き続けるので発火するだけでよい）
+      payload = {
+        slug: begin.slug,
+        reportId: begin.reportId,
+        status: 'queued',
+        cached: false,
+      };
+    }
+
+    const res = NextResponse.json(payload);
+    // 匿名IDを発行した場合は Cookie を保存（次回以降のレート制限・履歴紐付け・ポーリング認可）
     if (anon.isNew) {
       const c = setAnonCookie(anon.anonId);
       res.cookies.set(c.name, c.value, c.options);

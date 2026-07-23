@@ -68,7 +68,9 @@ function optionalNum(key: string, fallback: number): number {
 }
 
 export function loadConfig(): WorkerConfig {
-  const thinking = optionalEnv('MODEL_STAGE2_THINKING', 'disabled');
+  // Stage2 は商品価値の核なので推論品質を優先し、既定を adaptive にする（docs/05）。
+  // 原価を抑えたい場合は環境変数 MODEL_STAGE2_THINKING=disabled で戻せる。
+  const thinking = optionalEnv('MODEL_STAGE2_THINKING', 'adaptive');
   return {
     anthropicApiKey: requireEnv('ANTHROPIC_API_KEY'),
     modelStage1: optionalEnv('MODEL_STAGE1', 'claude-haiku-4-5'),

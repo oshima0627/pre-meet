@@ -9,6 +9,8 @@ import { z } from 'zod';
 export const FactsSchema = z.object({
   companyName: z.string(),
   summary: z.string(),
+  // 収益・事業モデル（BtoB/BtoC・提供形態＝SaaS/受託/物販等）。サイト記述ベースの事実。
+  businessModel: z.string().nullable(),
   basicInfo: z.object({
     founded: z.string().nullable(),
     employees: z.string().nullable(),
@@ -103,6 +105,15 @@ export const HypothesisSchema = z.object({
     reasoning: z.string(),
     caution: z.string(),
   }),
+  // 商談の進め方（この1枚を「読んで終わり」にせず実行に移せるようにする）。
+  // モデルが省略しても生成全体を落とさないよう nullable にし、画面は存在時のみ表示する。
+  meetingStrategy: z
+    .object({
+      keyMessage: z.string(), // この商談で必ず伝える1メッセージ
+      goal: z.string(), // 着地ゴール（次アクション・期日を含む）
+      nextAction: z.string(), // 具体的な次の一手（そのまま提案できる形）
+    })
+    .nullable(),
 });
 
 export type Facts = z.infer<typeof FactsSchema>;

@@ -21,6 +21,14 @@ export const buildStage1Prompt = (pages: CollectedPage[]): string => `
 末尾の「# 対象テキスト」に貼られた文章から、事実として明記されている情報だけを抽出し、
 下記の出力スキーマに従ったJSONを返してください。
 
+# 抽出の方針（後工程の質は、ここでどれだけ具体を拾えるかで決まる）
+- できるだけ「具体」を拾う。サービスは主要なものを漏れなく（分かる範囲で3〜8件）、
+  それぞれ「誰の・何を・どう解決するか」が分かる説明にする（単なる名称の列挙にしない）。
+- summary は事業内容だけでなく、収益/提供形態・主要顧客・強みとして打ち出している点まで
+  含めて4〜6文で書く（サイトの記述に忠実に。誇張しない）。
+- recentNews は分かる範囲で最大6件。新サービス・提携・調達・拠点・受賞など「動き」を優先。
+- 求人は職種名だけでなく department / 必須スキル(note) まで拾う（後工程の逆算に効く）。
+
 # 絶対に守るルール
 - テキストに書かれていない情報を推測で補ってはいけません
 - 不明な項目は必ず null を返してください。空文字や「不明」という文字列は禁止です
@@ -39,7 +47,8 @@ export const buildStage1Prompt = (pages: CollectedPage[]): string => `
 # 出力スキーマ
 {
   "companyName": "正式社名（株式会社の位置も含めて正確に）",
-  "summary": "事業内容を3〜4文で。サイトの記述に忠実に",
+  "summary": "事業内容・収益/提供形態・主要顧客・打ち出している強みを4〜6文で。サイトの記述に忠実に",
+  "businessModel": "収益/事業モデル（例: BtoB向けSaaS・月額課金 / 受託開発 / 物販 等）| null",
   "basicInfo": {
     "founded": "設立年（例: 2015年）| null",
     "employees": "従業員数の記載 | null",
@@ -49,7 +58,7 @@ export const buildStage1Prompt = (pages: CollectedPage[]): string => `
     "listed": "上場区分の記載 | null"
   },
   "services": [
-    { "name": "サービス名", "description": "1〜2文", "source": "URL" }
+    { "name": "サービス名", "description": "誰の・何を・どう解決するかが分かる1〜3文", "source": "URL" }
   ],
   "customers": {
     "segments": ["主要顧客層の記載"],

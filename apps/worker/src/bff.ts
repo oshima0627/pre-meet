@@ -192,7 +192,7 @@ export async function handleResearchRequest(
       config,
       repo,
     );
-    await repo.completeReport(reportId, result);
+    await repo.completeReport(reportId, result, effectiveOwn);
 
     const nowIso = new Date().toISOString();
     const report: ResearchReport = {

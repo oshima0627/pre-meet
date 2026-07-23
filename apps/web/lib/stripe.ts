@@ -19,7 +19,11 @@ export function isPackId(v: unknown): v is PackId {
 export function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error('STRIPE_SECRET_KEY が未設定です');
-  return new Stripe(key);
+  // Cloudflare Workers では Node 既定の HTTP クライアントが使えず接続に失敗するため、
+  // fetch ベースのクライアントを明示指定する（"connection to Stripe" エラーの回避）。
+  return new Stripe(key, {
+    httpClient: Stripe.createFetchHttpClient(),
+  });
 }
 
 // クレジット有効期限は6ヶ月（docs/07：資金決済法の適用対象外に収めるため）

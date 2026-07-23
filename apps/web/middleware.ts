@@ -35,5 +35,9 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg)).*)'],
+  // Stripe Webhook はセッション更新不要（署名検証で完結し、Cookieも来ない）。
+  // 生ボディを扱う経路に余計な処理を挟まないよう除外する。
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|api/stripe/webhook|.*\\.(?:svg|png|jpg)).*)',
+  ],
 };

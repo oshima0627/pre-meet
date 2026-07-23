@@ -1,8 +1,13 @@
 import { USER_AGENT } from './robots.js';
+import { AppError } from '../lib/errors.js';
+import { assertPublicUrl } from './ssrf.js';
 
 // 1ページあたりの本文上限の既定（docs/02: 8,000文字）。
 // 実運用では config.maxPageChars で上書きする（原価チューニングのため）。
 export const DEFAULT_PAGE_CHARS = 8_000;
+
+// リダイレクトの最大追跡数。無限ループ・遅延攻撃を避ける。
+const MAX_REDIRECTS = 5;
 
 export interface FetchedPage {
   url: string;
@@ -11,6 +16,8 @@ export interface FetchedPage {
 }
 
 // タイムアウト付きの単一ページ取得。UA を明示する。
+// SSRF対策として、初回URL＋各リダイレクト先を毎回 assertPublicUrl で検証する
+// （redirect:'follow' だと内部アドレスへリダイレクトで抜けられるため手動追跡）。
 export async function fetchRaw(
   url: string,
   timeoutMs = 10_000,
@@ -18,13 +25,27 @@ export async function fetchRaw(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(url, {
-      headers: { 'User-Agent': USER_AGENT, Accept: 'text/html,*/*' },
-      redirect: 'follow',
-      signal: controller.signal,
-    });
-    const html = await res.text();
-    return { url: res.url || url, status: res.status, html };
+    let current = new URL(url);
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      // 取得直前に必ず検証する（DNSリバインディング・リダイレクト回避を塞ぐ）
+      await assertPublicUrl(current, 'FETCH_FAILED');
+      const res = await fetch(current, {
+        headers: { 'User-Agent': USER_AGENT, Accept: 'text/html,*/*' },
+        redirect: 'manual',
+        signal: controller.signal,
+      });
+      // 3xx は Location を自前で解決して次ホップへ（相対URLも吸収）
+      if (res.status >= 300 && res.status < 400) {
+        const loc = res.headers.get('location');
+        if (!loc) return { url: current.toString(), status: res.status, html: '' };
+        current = new URL(loc, current);
+        continue;
+      }
+      const html = await res.text();
+      return { url: current.toString(), status: res.status, html };
+    }
+    // リダイレクトが多すぎるサイトは取得失敗扱い（原価・時間の暴走を防ぐ）
+    throw new AppError('FETCH_FAILED', 'リダイレクトが多すぎます');
   } finally {
     clearTimeout(timer);
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { toErrorResponse } from '@premeet/worker';
 import { getServerRepo } from '@/lib/repo';
+import { getViewerIdentity } from '@/lib/request';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,7 +14,9 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const report = await getServerRepo().getReportBySlug(id);
+    // 非公開レポートは所有者本人だけが状態取得できる（スラッグ総当たり対策）
+    const viewer = await getViewerIdentity();
+    const report = await getServerRepo().getReportBySlug(id, viewer);
     if (!report) {
       return NextResponse.json(
         { error: { code: 'NOT_FOUND', message: '見つかりません' } },

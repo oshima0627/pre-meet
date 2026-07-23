@@ -1,6 +1,13 @@
 import type { ResearchReport } from '@premeet/shared';
 import { LockedSection } from './locked-section';
 
+// 確信度の enum を日本語ラベルに変換する（UIに英語の生値を出さない）
+const CONFIDENCE_LABEL: Record<string, string> = {
+  high: '確度 高',
+  medium: '確度 中',
+  low: '確度 低',
+};
+
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="rounded-xl border bg-white p-4">
@@ -92,7 +99,7 @@ export function ReportView({ report }: { report: ResearchReport }) {
               {h.hypotheses.map((x, i) => (
                 <li key={i} className="text-sm">
                   <span className="rounded bg-indigo-50 px-1 text-xs text-indigo-700">
-                    {x.confidence}
+                    {CONFIDENCE_LABEL[x.confidence] ?? x.confidence}
                   </span>{' '}
                   <span className="font-medium">{x.title}</span>
                   <p className="text-slate-700">{x.detail}</p>

@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getServerRepo } from '@/lib/repo';
+import { getViewerIdentity } from '@/lib/request';
 import { ReportView } from '@/components/report-view';
 
 export const runtime = 'nodejs';
@@ -12,7 +13,9 @@ export default async function ReportPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const report = await getServerRepo().getReportBySlug(slug);
+  // 公開レポート or 所有者本人にのみ表示する（非公開の他人レポートは 404 扱い）
+  const viewer = await getViewerIdentity();
+  const report = await getServerRepo().getReportBySlug(slug, viewer);
   if (!report) notFound();
 
   if (report.status === 'failed') {

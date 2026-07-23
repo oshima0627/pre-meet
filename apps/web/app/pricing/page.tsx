@@ -38,7 +38,7 @@ export default function Pricing() {
             >
               {recommended && (
                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 px-3 py-1 text-xs font-semibold text-white shadow-sm">
-                  いちばん人気
+                  人気No.1
                 </span>
               )}
 

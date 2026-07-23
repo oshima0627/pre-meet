@@ -35,6 +35,37 @@ export interface ResearchResponse {
   report: ResearchReport;
 }
 
+// 自社URLが指定されていれば、その公開情報（Stage1 facts）から自社文脈を補完する。
+// 自社factsは会社単位キャッシュ（getFreshCompany）が効くので、同じ売り手の
+// 繰り返し利用はほぼ無償＝原価防衛と両立する。取得失敗は致命ではない
+// （用途だけ渡して続行する）。手入力があればそれを優先する。
+async function resolveOwnContext(
+  own: OwnContext | null,
+  config: WorkerConfig,
+  repo: ReportRepo,
+): Promise<OwnContext | null> {
+  if (!own?.ownUrl) return own;
+  try {
+    const start = normalizeUrl(own.ownUrl);
+    // tier=free で呼ぶと Stage2 は走らず facts のみ得られる（安価モデル1回）
+    const res = await runResearchCached(
+      { input: start.toString(), inputType: 'url', tier: 'free', ownContext: null },
+      config,
+      repo,
+    );
+    const f = res.facts;
+    return {
+      ...own,
+      companyName: own.companyName ?? f.companyName,
+      serviceSummary: own.serviceSummary ?? f.summary,
+      targetCustomer:
+        own.targetCustomer ?? (f.customers.segments.join('、') || null),
+    };
+  } catch {
+    return own;
+  }
+}
+
 // 共有リンク用のスラッグ。推測・総当たりで他人のレポートを引けないよう、
 // Math.random ではなく暗号乱数から十分な長さ（22文字≒131bit）で作る。
 // （非公開判定は getReportBySlug 側でも行うが、識別子自体も予測不能にする）
@@ -145,6 +176,10 @@ export async function handleResearchRequest(
     }
   }
 
+  // 自社URLがあれば公開情報から自社文脈を補完してから生成する（用途と併用）。
+  // 課金確定後に実行し、未認証・残高不足で無駄な自社クロールが走らないようにする。
+  const effectiveOwn = await resolveOwnContext(input.ownContext, config, repo);
+
   // 6-7) 生成 → 完了保存。失敗時は必ずクレジット返還（docs/02 原則）
   try {
     const result = await runResearchCached(
@@ -152,7 +187,7 @@ export async function handleResearchRequest(
         input: start.toString(),
         inputType: 'url',
         tier: input.tier,
-        ownContext: input.ownContext,
+        ownContext: effectiveOwn,
       },
       config,
       repo,
@@ -168,7 +203,7 @@ export async function handleResearchRequest(
       company: { name: result.facts.companyName, domain: result.domain },
       facts: result.facts,
       hypothesis: result.hypothesis,
-      ownContext: input.ownContext,
+      ownContext: effectiveOwn,
       sourceUrls: result.sourceUrls,
       isPublic: false,
       createdAt: nowIso,

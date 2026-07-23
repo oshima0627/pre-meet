@@ -228,6 +228,10 @@ ${JSON.stringify(facts, null, 2)}
   会社単位キャッシュを効かせたいため（用途別にするとキャッシュを失い原価が上がる）。
 - 用途別ガイドは angles / questions / objections に反映させる（スキーマは変えない）。
 - 完全版（paid）のみ適用。無料版は Stage2 を実行しないため用途・自社情報は送らない。
+- **自社文脈は URL で補完できる（`OwnContext.ownUrl`）。** フォームでは用途＋自社URL（任意）
+  だけを受け取り、BFF が自社サイトの Stage1 facts（社名・事業概要・顧客層）を抽出して
+  companyName / serviceSummary / targetCustomer を埋める。自社factsは会社単位キャッシュが
+  効くので、同じ売り手の繰り返し利用は追加コストがほぼ無い。取得失敗時は用途だけで続行する。
 
 ---
 

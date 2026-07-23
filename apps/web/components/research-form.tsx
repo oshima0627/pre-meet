@@ -51,9 +51,8 @@ export function ResearchForm() {
   // 自社情報（任意）。完全版(paid)の切り口・質問・反論を、依頼主の商材に合わせて
   // 最適化するための文脈。無料版は Stage2 を実行しないため送らない。
   const [useCase, setUseCase] = useState<SellerUseCase>('other');
-  const [ownService, setOwnService] = useState('');
-  const [ownTarget, setOwnTarget] = useState('');
-  const [ownCompany, setOwnCompany] = useState('');
+  // 自社URL（任意）。入れると公開情報から自社文脈をサーバー側で補完する。
+  const [ownUrl, setOwnUrl] = useState('');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const router = useRouter();
 
@@ -92,15 +91,10 @@ export function ResearchForm() {
           inputType: guessType(input),
           tier,
           // 完全版のときだけ自社文脈を送る（無料版では使われず、キャッシュも外れるため）。
-          // 用途を選ぶ or 自社サービスを書いた場合に送る（どちらか一方でも切り口が変わる）。
+          // 用途を選ぶ or 自社URLを入れた場合に送る（どちらか一方でも切り口が変わる）。
           ownContext:
-            tier === 'paid' && (useCase !== 'other' || ownService.trim())
-              ? {
-                  useCase,
-                  companyName: ownCompany.trim() || null,
-                  serviceSummary: ownService.trim() || null,
-                  targetCustomer: ownTarget.trim() || null,
-                }
+            tier === 'paid' && (useCase !== 'other' || ownUrl.trim())
+              ? { useCase, ownUrl: ownUrl.trim() || null }
               : null,
         }),
       });
@@ -215,30 +209,22 @@ export function ResearchForm() {
                 ))}
               </select>
             </div>
-            <textarea
-              value={ownService}
-              onChange={(e) => setOwnService(e.target.value)}
-              placeholder="自社サービスの概要（何を・誰に提供しているか）"
-              rows={2}
-              className="field resize-none py-2.5 text-sm"
-              disabled={loading}
-            />
-            <input
-              type="text"
-              value={ownTarget}
-              onChange={(e) => setOwnTarget(e.target.value)}
-              placeholder="想定顧客（例: 従業員100〜500名の製造業）"
-              className="field py-2.5 text-sm"
-              disabled={loading}
-            />
-            <input
-              type="text"
-              value={ownCompany}
-              onChange={(e) => setOwnCompany(e.target.value)}
-              placeholder="自社名（任意）"
-              className="field py-2.5 text-sm"
-              disabled={loading}
-            />
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                自社URL <span className="font-normal text-slate-400">（任意）</span>
+              </label>
+              <input
+                type="text"
+                value={ownUrl}
+                onChange={(e) => setOwnUrl(e.target.value)}
+                placeholder="https://自社サイト.co.jp"
+                className="field py-2.5 text-sm"
+                disabled={loading}
+              />
+              <p className="mt-1 text-xs text-slate-400">
+                入れると自社サイトの公開情報から商材の文脈を自動で読み取ります。
+              </p>
+            </div>
           </div>
         </div>
       )}

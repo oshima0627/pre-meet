@@ -52,8 +52,11 @@ export type SellerUseCase =
 
 // 自社サービス情報（US-07）。生成時点の値をスナップショットで保持する。
 // すべて任意（未入力なら汎用出力）。useCase だけでも切り口の最適化に効く。
+// ownUrl を入れると、その公開情報から companyName/serviceSummary/targetCustomer を
+// 自動抽出して埋める（サーバー側で解決。会社factsはキャッシュされる）。
 export interface OwnContext {
   useCase?: SellerUseCase | null;
+  ownUrl?: string | null;
   companyName?: string | null;
   serviceSummary?: string | null;
   targetCustomer?: string | null;

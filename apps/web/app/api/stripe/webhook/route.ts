@@ -14,7 +14,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'signature missing' }, { status: 400 });
   }
 
-  const raw = await req.text(); // 署名検証には生ボディが必要
+  // 署名検証には生ボディが必要。text() だと Workers/OpenNext の復号でマルチバイト
+  // （日本語を含む charge.refunded 等）がズレて署名不一致になるため、生バイトを
+  // そのまま渡し、UTF-8 デコードは Stripe SDK 側に任せる（byte-faithful 検証）。
+  const raw = Buffer.from(await req.arrayBuffer());
   let event: Stripe.Event;
   try {
     // Cloudflare Workers では同期版の署名検証（Node crypto 依存）が使えないため、

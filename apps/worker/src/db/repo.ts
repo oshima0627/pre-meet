@@ -89,6 +89,15 @@ export interface ReportRepo {
     limit?: number;
   }): Promise<ReportSummary[]>;
 
+  // 途中終了で「生成中」のまま残った古い行を failed にし、有料はクレジット返還する
+  // （catch に到達できずに固まった行の自己修復。docs/02「失敗時はクレジットを返す」）。
+  // staleBeforeIso より前に作られた未完了だけを対象にする。修復した件数を返す。
+  reconcileStaleReports(input: {
+    userId: string | null;
+    anonId: string | null;
+    staleBeforeIso: string;
+  }): Promise<number>;
+
   // クレジット消費/返還（RPC）。残高不足なら consume は false。
   consumeCredit(userId: string, reportId: string, amount: number): Promise<boolean>;
   refundCredit(userId: string, reportId: string, amount: number): Promise<boolean>;

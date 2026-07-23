@@ -216,6 +216,19 @@ ${JSON.stringify(facts, null, 2)}
 `;
 ```
 
+### 売り手の用途による最適化（`OwnContext.useCase`）
+
+「相手の業種」とは別軸で、**依頼主がどの商材を売る営業か**（用途）で出力の当たりが変わる。
+そこで Stage2 に `own.useCase` を渡し、用途別ガイド（重視する事実 / 切り口 / 想定反論のカテゴリ）を
+プロンプトに**注入**する。AI呼び出しは増えない（プロンプト文字列が増えるだけ）ので原価防衛と両立する。
+
+- 用途は `SellerUseCase`（`ai_dx` / `recruiting` / `web_marketing` / `saas_system` /
+  `advertising` / `consulting` / `other`）。`other`・未指定は**汎用フォールバック**。
+- **Stage1（事実抽出）は用途で分岐しない。** 事実は誰が見ても同じで、会社factsは
+  会社単位キャッシュを効かせたいため（用途別にするとキャッシュを失い原価が上がる）。
+- 用途別ガイドは angles / questions / objections に反映させる（スキーマは変えない）。
+- 完全版（paid）のみ適用。無料版は Stage2 を実行しないため用途・自社情報は送らない。
+
 ---
 
 ## 出力検証（zod）

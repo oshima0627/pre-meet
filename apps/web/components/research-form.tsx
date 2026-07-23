@@ -2,6 +2,18 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import type { SellerUseCase } from '@premeet/shared';
+
+// 売り手の用途の選択肢（表示ラベル）。既定は「その他/未指定」＝汎用。
+const USE_CASE_OPTIONS: { value: SellerUseCase; label: string }[] = [
+  { value: 'other', label: '未選択（汎用）' },
+  { value: 'ai_dx', label: 'AIコンサル・DX支援' },
+  { value: 'recruiting', label: '人材紹介・採用支援' },
+  { value: 'web_marketing', label: 'Web制作・マーケティング支援' },
+  { value: 'saas_system', label: '業務システム・SaaS' },
+  { value: 'advertising', label: '広告運用・代理店' },
+  { value: 'consulting', label: '経営・業務コンサル' },
+];
 
 // URLか企業名かを簡易判定（http始まり or ドットを含む → URL）
 function guessType(v: string): 'url' | 'name' {
@@ -38,6 +50,7 @@ export function ResearchForm() {
   const [elapsed, setElapsed] = useState(0); // 経過秒
   // 自社情報（任意）。完全版(paid)の切り口・質問・反論を、依頼主の商材に合わせて
   // 最適化するための文脈。無料版は Stage2 を実行しないため送らない。
+  const [useCase, setUseCase] = useState<SellerUseCase>('other');
   const [ownService, setOwnService] = useState('');
   const [ownTarget, setOwnTarget] = useState('');
   const [ownCompany, setOwnCompany] = useState('');
@@ -79,12 +92,14 @@ export function ResearchForm() {
           inputType: guessType(input),
           tier,
           // 完全版のときだけ自社文脈を送る（無料版では使われず、キャッシュも外れるため）。
+          // 用途を選ぶ or 自社サービスを書いた場合に送る（どちらか一方でも切り口が変わる）。
           ownContext:
-            tier === 'paid' && ownService.trim()
+            tier === 'paid' && (useCase !== 'other' || ownService.trim())
               ? {
-                  companyName: ownCompany.trim(),
-                  serviceSummary: ownService.trim(),
-                  targetCustomer: ownTarget.trim(),
+                  useCase,
+                  companyName: ownCompany.trim() || null,
+                  serviceSummary: ownService.trim() || null,
+                  targetCustomer: ownTarget.trim() || null,
                 }
               : null,
         }),
@@ -183,6 +198,23 @@ export function ResearchForm() {
             入力すると、完全版の切り口・ヒアリング質問・想定反論をあなたの商材に合わせて最適化します。
           </p>
           <div className="mt-3 space-y-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                あなたの用途（商材タイプ）
+              </label>
+              <select
+                value={useCase}
+                onChange={(e) => setUseCase(e.target.value as SellerUseCase)}
+                className="field py-2.5 text-sm"
+                disabled={loading}
+              >
+                {USE_CASE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
             <textarea
               value={ownService}
               onChange={(e) => setOwnService(e.target.value)}

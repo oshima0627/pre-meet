@@ -65,16 +65,14 @@ export default async function ReportsPage() {
             これまでに作成したリサーチシートを見返せます。
           </p>
         </div>
-        <a
-          href="/"
-          className="shrink-0 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
-        >
+        <a href="/" className="btn-primary shrink-0">
+          <span aria-hidden>＋</span>
           新規作成
         </a>
       </div>
 
       {reports.length === 0 ? (
-        <div className="rounded-2xl border border-dashed bg-white p-10 text-center">
+        <div className="card border-dashed p-10 text-center">
           <p className="text-sm text-slate-500">
             まだリサーチがありません。
           </p>
@@ -91,7 +89,7 @@ export default async function ReportsPage() {
           )}
         </div>
       ) : (
-        <ul className="divide-y rounded-2xl border bg-white">
+        <ul className="card divide-y divide-slate-100 overflow-hidden">
           {reports.map((r) => {
             const title = r.companyName || r.companyDomain || '（会社名不明）';
             const clickable = r.status === 'done';

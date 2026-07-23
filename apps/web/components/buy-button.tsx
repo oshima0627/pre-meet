@@ -3,7 +3,17 @@
 import { useState } from 'react';
 
 // クレジット購入ボタン。/api/checkout で Stripe セッションを作り遷移する。
-export function BuyButton({ pack, label }: { pack: string; label: string }) {
+// highlight=true（おすすめプラン）はグラデの主ボタン、それ以外は控えめな枠線ボタンにして
+// 視線をおすすめプランに誘導する。
+export function BuyButton({
+  pack,
+  label,
+  highlight = false,
+}: {
+  pack: string;
+  label: string;
+  highlight?: boolean;
+}) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -33,16 +43,16 @@ export function BuyButton({ pack, label }: { pack: string; label: string }) {
     }
   }
 
+  const base = highlight
+    ? 'btn-primary w-full'
+    : 'w-full inline-flex items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50/60 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-60';
+
   return (
     <div>
-      <button
-        onClick={buy}
-        disabled={loading}
-        className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
-      >
+      <button onClick={buy} disabled={loading} className={base}>
         {loading ? '処理中…' : `${label}を購入`}
       </button>
-      {err && <p className="mt-1 text-xs text-red-600">{err}</p>}
+      {err && <p className="mt-2 text-xs text-red-600">{err}</p>}
     </div>
   );
 }
